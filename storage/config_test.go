@@ -10,9 +10,7 @@ func TestGetConfig(t *testing.T) {
 
 func TestPushPopConfig(t *testing.T) {
 	popTest := func() {
-		if err := PopConfig(); err != nil {
-			t.Errorf("Failed to pop the staging configuration")
-		}
+		PopConfig()
 		if *GetConfig() != testConfig {
 			t.Errorf("Config after pop is not the test configuration")
 		}
@@ -27,15 +25,10 @@ func TestPushPopConfig(t *testing.T) {
 }
 
 func TestPushPopFailedConfig(t *testing.T) {
-	popTest := func() {
-		if err := PopConfig(); err == nil {
-			t.Errorf("Was able to pop after failed push")
-		}
-	}
 	if err := PushConfig(".no-such-environment-file"); err == nil {
 		t.Errorf("Was able to push a non-existent environment")
 	}
-	defer popTest()
+	defer PopConfig()
 	if *GetConfig() != testConfig {
 		t.Errorf("Config after failed push is not the test configuration")
 	}

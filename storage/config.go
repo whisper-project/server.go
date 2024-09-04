@@ -2,8 +2,9 @@ package storage
 
 import (
 	"fmt"
-	"github.com/dotenv-org/godotenvvault"
 	"os"
+
+	"github.com/dotenv-org/godotenvvault"
 )
 
 type Config struct {
@@ -55,11 +56,11 @@ func PushConfig(from ...string) error {
 	return nil
 }
 
-func PopConfig() error {
+func PopConfig() {
 	if len(configStack) == 0 {
-		return fmt.Errorf("no configs to pop")
+		return
 	}
 	loadedConfig = configStack[len(configStack)-1]
 	configStack = configStack[:len(configStack)-1]
-	return nil
+	return
 }
