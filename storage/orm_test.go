@@ -2,13 +2,14 @@ package storage
 
 import (
 	"context"
-	"github.com/go-test/deep"
-	"github.com/google/uuid"
 	"testing"
 	"time"
+
+	"github.com/go-test/deep"
+	"github.com/google/uuid"
 )
 
-type OrmTester struct {
+type OrmTestStruct struct {
 	IdField           string    `redis:"id"`
 	CreateDate        time.Time `redis:"createDate"`
 	CreateDateMillis  int64     `redis:"createDateMillis"`
@@ -16,16 +17,16 @@ type OrmTester struct {
 	Secret            string    `redis:"secret"`
 }
 
-func (data OrmTester) prefix() string {
+func (data OrmTestStruct) prefix() string {
 	return "ormTestPrefix:"
 }
 
-func (data OrmTester) id() string {
+func (data OrmTestStruct) id() string {
 	return data.IdField
 }
 
 func TestNilOrmTester(t *testing.T) {
-	var data *OrmTester = nil
+	var data *OrmTestStruct = nil
 	if err := LoadFields(context.Background(), data); err == nil {
 		t.Errorf("LoadFields on nil pointer didn't fail!")
 	}
@@ -41,7 +42,7 @@ func TestNilOrmTester(t *testing.T) {
 }
 
 func TestLoadMissingOrmTester(t *testing.T) {
-	data := &OrmTester{IdField: uuid.New().String()}
+	data := &OrmTestStruct{IdField: uuid.New().String()}
 	if err := LoadFields(context.Background(), data); err == nil {
 		t.Errorf("Found stored data for new client %q", data.IdField)
 	}
@@ -51,12 +52,12 @@ func TestSaveLoadDeleteOrmTester(t *testing.T) {
 	id := uuid.New().String()
 	now := time.Now()
 	millis := now.UnixMilli()
-	var seconds = float64(now.UnixMicro()) / 1_000_000
-	saved := OrmTester{IdField: id, CreateDate: now, CreateDateMillis: millis, CreateDateSeconds: seconds, Secret: "shh!"}
+	seconds := float64(now.UnixMicro()) / 1_000_000
+	saved := OrmTestStruct{IdField: id, CreateDate: now, CreateDateMillis: millis, CreateDateSeconds: seconds, Secret: "shh!"}
 	if err := SaveFields(context.Background(), &saved); err != nil {
 		t.Errorf("Failed to save stored data for %q: %v", id, err)
 	}
-	loaded := OrmTester{IdField: id}
+	loaded := OrmTestStruct{IdField: id}
 	if err := LoadFields(context.Background(), &loaded); err != nil {
 		t.Errorf("Failed to load stored data for %q: %v", id, err)
 	}
@@ -80,13 +81,13 @@ func TestSaveMapDeleteOrmTester(t *testing.T) {
 	now := time.Now()
 	millis := now.UnixMilli()
 	seconds := float64(now.UnixMicro()) / 1_000_000
-	saved := OrmTester{IdField: id, CreateDate: now, CreateDateMillis: millis, CreateDateSeconds: seconds, Secret: id}
+	saved := OrmTestStruct{IdField: id, CreateDate: now, CreateDateMillis: millis, CreateDateSeconds: seconds, Secret: id}
 	if err := SaveFields(ctx, &saved); err != nil {
 		t.Errorf("Failed to save stored data for %q: %v", id, err)
 	}
 	count := 0
 	found := false
-	loaded := OrmTester{}
+	loaded := OrmTestStruct{}
 	mapper := func() {
 		count++
 		if loaded.Secret == id {
@@ -108,5 +109,128 @@ func TestSaveMapDeleteOrmTester(t *testing.T) {
 	}
 	if count != 0 {
 		t.Errorf("Mapped over %#v objects; wanted %#v", count, 0)
+	}
+}
+
+type OrmTestSet string
+
+func (s OrmTestSet) prefix() string {
+	return "ormTestSet:"
+}
+
+func (s OrmTestSet) id() string {
+	return string(s)
+}
+
+func TestFetchNoMembers(t *testing.T) {
+	ctx := context.Background()
+	id := OrmTestSet(uuid.New().String())
+	if members, err := FetchMembers(ctx, id); err != nil || len(members) != 0 {
+		t.Errorf("FetchMembers of empty set failed, expected success with no members")
+	}
+}
+
+func TestAddFetchRemoveMembers(t *testing.T) {
+	ctx := context.Background()
+	id := OrmTestSet(uuid.New().String())
+	saved := []string{"a", "b", "c", "b", "a"}
+	if err := AddMembers(ctx, id, saved...); err != nil {
+		t.Errorf("Failed to add saved: %v", err)
+	}
+	if found, err := FetchMembers(ctx, id); err != nil {
+		t.Errorf("FetchMembers failed: %v", err)
+	} else if len(found) != 3 {
+		t.Errorf("FetchMembers returned %d results, expected 3: %#v", len(found), found)
+	}
+	if err := RemoveMembers(ctx, id, "b", "c"); err != nil {
+		t.Errorf("Failed to remove members: %v", err)
+	}
+	if found, err := FetchMembers(ctx, id); err != nil {
+		t.Errorf("FetchMembers failed: %v", err)
+	} else if len(found) != 1 {
+		t.Errorf("FetchMembers returned %d results, expected 1: %#v", len(found), found)
+	}
+	if err := DeleteStorage(ctx, &id); err != nil {
+		t.Errorf("Failed to delete stored data for %q: %v", id, err)
+	}
+}
+
+type OrmTestList string
+
+func (s OrmTestList) prefix() string {
+	return "ormTestList:"
+}
+
+func (s OrmTestList) id() string {
+	return string(s)
+}
+
+func TestFetchEmptyRange(t *testing.T) {
+	ctx := context.Background()
+	id := OrmTestList(uuid.New().String())
+	if elements, err := FetchRange(ctx, id, 0, -1); err != nil || len(elements) != 0 {
+		t.Errorf("FetchRange of empty list failed, expected success with no elements")
+	}
+}
+
+func TestAddFetchRemoveRange(t *testing.T) {
+	ctx := context.Background()
+	id := OrmTestList(uuid.New().String())
+	if err := PushRange(ctx, id, true, "|"); err != nil {
+		t.Errorf("Failed to push center: %v", err)
+	}
+	if err := PushRange(ctx, id, true, "a", "b", "c"); err != nil {
+		t.Errorf("Failed to push left: %v", err)
+	}
+	if err := PushRange(ctx, id, false, "a", "b", "c"); err != nil {
+		t.Errorf("Failed to push right: %v", err)
+	}
+	if before, err := FetchRange(ctx, id, 0, -1); err != nil {
+		t.Errorf("FetchRange of before list failed, expected success")
+	} else if diff := deep.Equal(before, []string{"c", "b", "a", "|", "a", "b", "c"}); diff != nil {
+		t.Errorf("FetchRange of before list is:\n%v\nwith differences:\n%v", before, diff)
+	}
+	if err := RemoveElement(ctx, id, 0, "b"); err != nil {
+		t.Errorf("Failed to remove 'b': %v", err)
+	}
+	if after, err := FetchRange(ctx, id, 0, -1); err != nil {
+		t.Errorf("FetchRange of after list failed, expected success")
+	} else if diff := deep.Equal(after, []string{"c", "a", "|", "a", "c"}); diff != nil {
+		t.Errorf("FetchRange of after list is:\n%v\nwith differences:\n%v", after, diff)
+	}
+	if err := DeleteStorage(ctx, &id); err != nil {
+		t.Errorf("Failed to delete stored data for %q: %v", id, err)
+	}
+}
+
+func TestFetchOneBlocking(t *testing.T) {
+	ctx := context.Background()
+	id := OrmTestList(uuid.New().String())
+	defer func() {
+		if err := DeleteStorage(ctx, &id); err != nil {
+			t.Errorf("Failed to delete stored data for %q: %v", id, err)
+		}
+	}()
+	c := make(chan string)
+	go func() {
+		if element, err := FetchOneBlocking(ctx, id, 2*time.Second); err != nil {
+			t.Errorf("FetchOneBlocking failed: %v", err)
+			c <- "failed"
+		} else {
+			c <- element
+		}
+	}()
+	time.Sleep(500 * time.Millisecond)
+	if err := PushRange(ctx, id, false, "a", "b", "c"); err != nil {
+		t.Fatalf("Failed to push right: %v", err)
+	}
+	received := <-c
+	if received != "c" {
+		t.Errorf("FetchOneBlocking got %q", received)
+	}
+	if remaining, err := FetchRange(ctx, id, 0, -1); err != nil {
+		t.Errorf("FetchRange of remaining list failed, expected success")
+	} else if diff := deep.Equal(remaining, []string{"c", "a", "b"}); diff != nil {
+		t.Errorf("FetchRange of remaining list is:\n%v\ndifferences are:\n%v", remaining, diff)
 	}
 }

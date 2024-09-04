@@ -3,6 +3,9 @@ package storage
 import (
 	"context"
 	"fmt"
+	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type Storable interface {
@@ -83,8 +86,8 @@ func MapFields[T StorableStruct](ctx context.Context, f func(), obj *T) error {
 }
 
 type StorableSet interface {
-	Storable
 	~string
+	Storable
 }
 
 func FetchMembers[T StorableSet](ctx context.Context, obj T) ([]string, error) {
@@ -97,20 +100,82 @@ func FetchMembers[T StorableSet](ctx context.Context, obj T) ([]string, error) {
 	return res.Val(), nil
 }
 
-func AddMembers[T StorableSet](ctx context.Context, obj T, members ...interface{}) error {
+func AddMembers[T StorableSet](ctx context.Context, obj T, members ...string) error {
 	db, prefix := GetDb()
 	key := prefix + obj.prefix() + obj.id()
-	res := db.SAdd(ctx, key, members...)
+	args := make([]interface{}, len(members))
+	for i, member := range members {
+		args[i] = any(member)
+	}
+	res := db.SAdd(ctx, key, args...)
 	if err := res.Err(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func RemoveMembers[T StorableSet](ctx context.Context, obj T, members ...interface{}) error {
+func RemoveMembers[T StorableSet](ctx context.Context, obj T, members ...string) error {
 	db, prefix := GetDb()
 	key := prefix + obj.prefix() + obj.id()
-	res := db.SRem(ctx, key, members...)
+	args := make([]interface{}, len(members))
+	for i, member := range members {
+		args[i] = any(member)
+	}
+	res := db.SRem(ctx, key, args...)
+	if err := res.Err(); err != nil {
+		return err
+	}
+	return nil
+}
+
+type StorableList interface {
+	Storable
+	~string
+}
+
+func FetchRange[T StorableList](ctx context.Context, obj T, start int64, end int64) ([]string, error) {
+	db, prefix := GetDb()
+	key := prefix + obj.prefix() + obj.id()
+	res := db.LRange(ctx, key, start, end)
+	if err := res.Err(); err != nil {
+		return nil, err
+	}
+	return res.Val(), nil
+}
+
+func FetchOneBlocking[T StorableList](ctx context.Context, obj T, timeout time.Duration) (string, error) {
+	db, prefix := GetDb()
+	key := prefix + obj.prefix() + obj.id()
+	res := db.BLMove(ctx, key, key, "right", "left", timeout)
+	if err := res.Err(); err != nil {
+		return "", err
+	}
+	return res.Val(), nil
+}
+
+func PushRange[T StorableList](ctx context.Context, obj T, onLeft bool, members ...string) error {
+	db, prefix := GetDb()
+	key := prefix + obj.prefix() + obj.id()
+	args := make([]interface{}, len(members))
+	for i, member := range members {
+		args[i] = any(member)
+	}
+	var res *redis.IntCmd
+	if onLeft {
+		res = db.LPush(ctx, key, args...)
+	} else {
+		res = db.RPush(ctx, key, args...)
+	}
+	if err := res.Err(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func RemoveElement[T StorableList](ctx context.Context, obj T, count int64, element string) error {
+	db, prefix := GetDb()
+	key := prefix + obj.prefix() + obj.id()
+	res := db.LRem(ctx, key, count, any(element))
 	if err := res.Err(); err != nil {
 		return err
 	}
