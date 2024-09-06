@@ -7,11 +7,11 @@ type ConversationData struct {
 	StateId string `redis:"stateId"`
 }
 
-func (c *ConversationData) prefix() string {
+func (c ConversationData) prefix() string {
 	return "con:"
 }
 
-func (c *ConversationData) id() string {
+func (c ConversationData) id() string {
 	return c.Id
 }
 
@@ -29,10 +29,10 @@ type ConversationState struct {
 	Ttl            int64  `redis:"ttl"`
 }
 
-func (c *ConversationState) prefix() string {
+func (c ConversationState) prefix() string {
 	return "tra:"
 }
 
-func (c *ConversationState) id() string {
+func (c ConversationState) id() string {
 	return c.Id
 }
