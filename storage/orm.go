@@ -67,7 +67,7 @@ func MapFields[T StorableStruct](ctx context.Context, f func(), obj *T) error {
 		return fmt.Errorf("StorableStruct pointer is nil")
 	}
 	db, prefix := GetDb()
-	iter := db.Scan(ctx, 0, prefix+(*obj).prefix()+"*", 0).Iterator()
+	iter := db.Scan(ctx, 0, prefix+(*obj).prefix()+"*", 20).Iterator()
 	for iter.Next(ctx) {
 		key := iter.Val()
 		res := db.HGetAll(ctx, key)
