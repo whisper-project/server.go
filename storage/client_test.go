@@ -3,13 +3,11 @@ package storage
 import (
 	"context"
 	"errors"
-	"flag"
-	"github.com/google/uuid"
+	"os"
 	"testing"
-	"time"
-)
 
-var legacy = flag.Bool("legacy", false, "Test compatibility with legacy storage ")
+	"github.com/google/uuid"
+)
 
 func TestClientData_HasChanged(t *testing.T) {
 	ctx := context.Background()
@@ -59,9 +57,9 @@ func TestClientData_HasChanged(t *testing.T) {
 	}
 }
 
-func TestMapCountLegacyClients(t *testing.T) {
-	if !*legacy {
-		t.Skip("Skipping legacy test")
+func TestCountLegacyClients(t *testing.T) {
+	if os.Getenv("DO_LEGACY_TESTS") != "YES" {
+		t.Skip("Skipping legacy client test")
 	}
 	if err := PushConfig("../.env.production"); err != nil {
 		t.Fatalf("Can't load production config: %v", err)
@@ -72,8 +70,7 @@ func TestMapCountLegacyClients(t *testing.T) {
 	countOnly := func() {
 		count++
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	ctx := context.Background()
 	if err := MapFields(ctx, countOnly, &data); err != nil {
 		if errors.Is(err, ctx.Err()) {
 			t.Logf("Found %d production clients before timing out.", count)
