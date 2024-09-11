@@ -1,4 +1,20 @@
+# local directory, by convention
+local/
+
+# dotenv
 .env*
 !.env.project
 !.env.vault
-.flaskenv*
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# golang Test binary, built with `go test -c`
+*.test
+
+# Output of the golang test coverage tool and many others
+*.out
