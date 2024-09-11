@@ -23,7 +23,7 @@ var (
 		AblyPublishKey:   "xVLyHw.DGYdkQ:FtPUNIourpYSoZAIbeon0p_rJGtb5vO1j2OIzP3GMX8",
 		AblySubscribeKey: "xVLyHw.DGYdkQ:FtPUNIourpYSoZAIbeon0p_rJGtb5vO1j2OIzP3GMX8",
 		ApnsUrl:          "http://localhost:2197",
-		ApnsCredSecret:   "-----BEGIN PRIVATE KEY----- MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg5TL3GlhuHCFZe0L/ g+rt2ibfrgaGaiYl1/N2FAms0yehRANCAAT6nm9Bs5+HXOI2DRm9h1LtQxofxa1e lMN+WP8KFt9KQ/yKYohq4ZLtvdxfjoPobxPNm+VGkycP8zQMK3RAwJSu -----END PRIVATE KEY-----",
+		ApnsCredSecret:   "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgGSZi+0fnzC8bbBbI\nD5wyNIgqnl7dFLN+FlUD/mOAG+ShRANCAASZU2wXczRjmlkcHJp4yHTl3KlAXoB8\nozM8I6bJBZPUGlTdIpvV2u2mLhKBZNZIUDaqdHKkfukSn+hgdZspMtaA\n-----END PRIVATE KEY-----",
 		ApnsCredId:       "89AB98CD89",
 		ApnsTeamId:       "8CD8989AB9",
 		DbUrl:            "redis://",

@@ -1,6 +1,6 @@
-package storage
+package profile
 
-type ProfileData struct {
+type Data struct {
 	Id                 string
 	Name               string
 	Password           string
@@ -15,20 +15,20 @@ type ProfileData struct {
 	FavoritesProfile   string
 }
 
-func (p ProfileData) prefix() string {
+func (p Data) StoragePrefix() string {
 	return "pro:"
 }
 
-func (p ProfileData) id() string {
+func (p Data) StorageId() string {
 	return p.Id
 }
 
-type ProfileClientList string
+type ClientList string
 
-func (pcl ProfileClientList) prefix() string {
+func (pcl ClientList) StoragePrefix() string {
 	return "pro-clients:"
 }
 
-func (pcl ProfileClientList) id() string {
+func (pcl ClientList) StorageId() string {
 	return string(pcl)
 }

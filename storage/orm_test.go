@@ -17,11 +17,11 @@ type OrmTestStruct struct {
 	Secret            string    `redis:"secret"`
 }
 
-func (data OrmTestStruct) prefix() string {
+func (data OrmTestStruct) StoragePrefix() string {
 	return "ormTestPrefix:"
 }
 
-func (data OrmTestStruct) id() string {
+func (data OrmTestStruct) StorageId() string {
 	return data.IdField
 }
 
@@ -114,11 +114,11 @@ func TestSaveMapDeleteOrmTester(t *testing.T) {
 
 type OrmTestSet string
 
-func (s OrmTestSet) prefix() string {
+func (s OrmTestSet) StoragePrefix() string {
 	return "ormTestSet:"
 }
 
-func (s OrmTestSet) id() string {
+func (s OrmTestSet) StorageId() string {
 	return string(s)
 }
 
@@ -157,11 +157,11 @@ func TestAddFetchRemoveMembers(t *testing.T) {
 
 type OrmTestList string
 
-func (s OrmTestList) prefix() string {
+func (s OrmTestList) StoragePrefix() string {
 	return "ormTestList:"
 }
 
-func (s OrmTestList) id() string {
+func (s OrmTestList) StorageId() string {
 	return string(s)
 }
 

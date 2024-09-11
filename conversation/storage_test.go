@@ -1,21 +1,23 @@
-package storage
+package conversation
 
 import (
 	"context"
 	"os"
 	"testing"
 	"time"
+
+	"clickonetwo.io/whisper/server/storage"
 )
 
 func TestCountLegacyConversations(t *testing.T) {
 	if os.Getenv("DO_LEGACY_TESTS") != "YES" {
 		t.Skip("Skipping legacy client test")
 	}
-	if err := PushConfig("../.env.production"); err != nil {
+	if err := storage.PushConfig("../.env.production"); err != nil {
 		t.Fatalf("Can't load production config: %v", err)
 	}
-	defer PopConfig()
-	data := ConversationState{}
+	defer storage.PopConfig()
+	data := State{}
 	count := 0
 	earliest := time.Now()
 	latest := time.UnixMilli(0)
@@ -30,9 +32,9 @@ func TestCountLegacyConversations(t *testing.T) {
 		}
 	}
 	ctx := context.Background()
-	if err := MapFields(ctx, doCount, &data); err != nil {
+	if err := storage.MapFields(ctx, doCount, &data); err != nil {
 		t.Errorf("Failed to map production data: %v", err)
 	} else {
-		t.Logf("Found %d transcripts, earliest at %v, latest at %v", count, earliest, latest)
+		t.Logf("Found %d states, earliest at %v, latest at %v", count, earliest, latest)
 	}
 }

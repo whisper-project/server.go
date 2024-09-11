@@ -1,26 +1,21 @@
 package main
 
 import (
-	"log"
-	"time"
+	"fmt"
 
-	ginzap "github.com/gin-contrib/zap"
-
+	"clickonetwo.io/whisper/server/middleware"
 	"clickonetwo.io/whisper/server/storage"
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 )
 
 func main() {
 	err := storage.PushConfig(".env")
 	if err != nil {
-		log.Fatal("Can't load configuration: ", err)
+		panic(fmt.Sprintf("Can't load configuration: %v", err))
 	}
 	defer storage.PopConfig()
-
-	// set up main router with zap logging
-	r := gin.New()
-	logger, _ := zap.NewDevelopment()
-	r.Use(ginzap.Ginzap(logger, time.RFC3339, true))
-	r.Use(ginzap.RecoveryWithZap(logger, true))
+	r := middleware.CreateCoreEngine()
+	err = r.Run("localhost:8080")
+	if err != nil {
+		fmt.Printf("Server exited with error: %v", err)
+	}
 }

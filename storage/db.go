@@ -1,21 +1,28 @@
 package storage
 
 import (
+	"fmt"
+
 	"github.com/redis/go-redis/v9"
-	"log"
 )
 
-var client *redis.Client
-var keyPrefix string
+var (
+	clientUrl string
+	client    *redis.Client
+	keyPrefix string
+)
 
 func GetDb() (*redis.Client, string) {
-	if client != nil {
+	config := GetConfig()
+	if client != nil && clientUrl == config.DbUrl {
 		return client, keyPrefix
 	}
-	config := GetConfig()
 	opts, err := redis.ParseURL(config.DbUrl)
 	if err != nil {
-		log.Fatal("invalid Redis url:", err)
+		panic(fmt.Sprintf("invalid Redis url: %v", err))
 	}
-	return redis.NewClient(opts), config.DbKeyPrefix
+	clientUrl = config.DbUrl
+	client = redis.NewClient(opts)
+	keyPrefix = config.DbKeyPrefix
+	return client, keyPrefix
 }

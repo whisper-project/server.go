@@ -1,21 +1,21 @@
-package storage
+package conversation
 
-type ConversationData struct {
+type Data struct {
 	Id      string `redis:"id"`
 	Name    string `redis:"name"`
 	OwnerId string `redis:"ownerId"`
 	StateId string `redis:"stateId"`
 }
 
-func (c ConversationData) prefix() string {
+func (c Data) StoragePrefix() string {
 	return "con:"
 }
 
-func (c ConversationData) id() string {
+func (c Data) StorageId() string {
 	return c.Id
 }
 
-type ConversationState struct {
+type State struct {
 	Id             string `redis:"id"`
 	ServerId       string `redis:"serverId"`
 	ConversationId string `redis:"conversationId"`
@@ -29,10 +29,10 @@ type ConversationState struct {
 	Ttl            int64  `redis:"ttl"`
 }
 
-func (c ConversationState) prefix() string {
+func (c State) StoragePrefix() string {
 	return "tra:"
 }
 
-func (c ConversationState) id() string {
+func (c State) StorageId() string {
 	return c.Id
 }
