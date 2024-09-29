@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"clickonetwo.io/whisper/server/middleware"
+	"clickonetwo.io/whisper/server/saywhat"
 	"clickonetwo.io/whisper/server/storage"
 )
 
@@ -14,7 +15,10 @@ func main() {
 	}
 	defer storage.PopConfig()
 	r := middleware.CreateCoreEngine()
-	err = r.Run("localhost:8080")
+	r.Static("/say-what", "./saywhat.js/dist")
+	sayWhat := r.Group("/api/say-what/v1")
+	saywhat.AddRoutes(sayWhat)
+	err = r.Run("localhost:5000")
 	if err != nil {
 		fmt.Printf("Server exited with error: %v", err)
 	}

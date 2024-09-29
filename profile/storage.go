@@ -1,18 +1,18 @@
 package profile
 
 type Data struct {
-	Id                 string
-	Name               string
-	Password           string
-	WhisperTimestamp   string
-	WhisperProfile     string
-	ListenTimestamp    string
-	ListenProfile      string
-	SettingsVersion    int64
-	SettingsETag       string
-	SettingsProfile    string
-	FavoritesTimestamp string
-	FavoritesProfile   string
+	Id                 string `redis:"id"`
+	Name               string `redis:"name"`
+	Password           string `redis:"password"`
+	WhisperTimestamp   string `redis:"whisperTimestamp"`
+	WhisperProfile     string `redis:"whisperProfile"`
+	ListenTimestamp    string `redis:"listenTimestamp"`
+	ListenProfile      string `redis:"listenProfile"`
+	SettingsVersion    int64  `redis:"settingsVersion"`
+	SettingsETag       string `redis:"settingsETag"`
+	SettingsProfile    string `redis:"settingsProfile"`
+	FavoritesTimestamp string `redis:"favoritesTimestamp"`
+	FavoritesProfile   string `redis:"favoritesProfile"`
 }
 
 func (p Data) StoragePrefix() string {
