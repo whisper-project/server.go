@@ -1,0 +1,36 @@
+{
+  "targets": {
+    "default": {
+      "source": [
+        "src/listen/index.html"
+      ],
+      "distDir": "dist",
+      "publicUrl": "/listen"
+    }
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "rm -f dist/* && parcel build --no-cache --no-source-maps",
+    "develop": "rm -f dist/* && parcel build --no-cache --no-optimize"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.11.3",
+    "@emotion/styled": "^11.11.0",
+    "@fontsource/roboto": "^5.0.8",
+    "@mui/icons-material": "^5.15.6",
+    "@mui/material": "^5.15.6",
+    "ably": "^1.2.48",
+    "js-cookie": "^3.0.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/js-cookie": "^3.0.6",
+    "@types/react": "^18.2.21",
+    "@types/react-dom": "^18.2.7",
+    "buffer": "^6.0.3",
+    "parcel": "^2.9.3",
+    "process": "^0.11.10",
+    "typescript": "^5.2.2"
+  }
+}
