@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 
-	"clickonetwo.io/whisper/server/middleware"
-	"clickonetwo.io/whisper/server/saywhat"
-	"clickonetwo.io/whisper/server/storage"
+	"clickonetwo.io/whisper/server/api/saywhat"
+	"clickonetwo.io/whisper/server/internal/middleware"
+	"clickonetwo.io/whisper/server/internal/storage"
 )
 
 func main() {

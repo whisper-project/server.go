@@ -4,9 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"clickonetwo.io/whisper/server/middleware"
-	"clickonetwo.io/whisper/server/storage"
 	"github.com/google/uuid"
+
+	"clickonetwo.io/whisper/server/internal/middleware"
+	"clickonetwo.io/whisper/server/internal/storage"
 )
 
 func TestHasAuthChanged(t *testing.T) {

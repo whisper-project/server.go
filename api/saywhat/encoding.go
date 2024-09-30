@@ -9,11 +9,16 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"clickonetwo.io/whisper/server/profile"
-	"clickonetwo.io/whisper/server/storage"
+	"clickonetwo.io/whisper/server/internal/profile"
+	storage2 "clickonetwo.io/whisper/server/internal/storage"
 )
 
-type SettingsProfile map[string]interface{}
+type SettingsProfile struct {
+	Id       string  `json:"id"`
+	Version  float64 `json:"version"`
+	Settings string  `json:"settings"`
+	ETag     string  `json:"etag"`
+}
 
 type WhisperSettings map[string]string
 
@@ -38,36 +43,30 @@ type VoiceSettings struct {
 	UseSpeakerBoost bool    `json:"use_speaker_boost"`
 }
 
-func defaultSettings() Settings {
-	return Settings{
-		ApiRoot: "https://api.elevenlabs.io/v1",
-		GenerationSettings: GenerationSettings{
-			OutputFormat:             "mp3_44100_128",
-			OptimizeStreamingLatency: "1",
-			VoiceId:                  "pNInz6obpgDQGcFmaJgB", // Adam - free voice
-			ModelId:                  "eleven_turbo_v2",
-			VoiceSettings: VoiceSettings{
-				SimilarityBoost: 0.5,
-				Stability:       0.5,
-				UseSpeakerBoost: true,
-			},
-		},
-	}
+// / addMissingSettings adds any missing settings expected by Say What.
+func (s *Settings) addMissingSettings() {
+	storage2.SetIfMissing(&s.ApiRoot, "https://api.elevenlabs.io/v1")
+	storage2.SetIfMissing(&s.GenerationSettings.OutputFormat, "mp3_44100_128")
+	storage2.SetIfMissing(&s.GenerationSettings.OptimizeStreamingLatency, "1")
+	storage2.SetIfMissing(&s.GenerationSettings.VoiceId, `pNInz6obpgDQGcFmaJgB`) // Adam - free voice
+	storage2.SetIfMissing(&s.GenerationSettings.ModelId, "eleven_turbo_v2")
+	storage2.SetIfMissing(&s.GenerationSettings.VoiceSettings.SimilarityBoost, 0.5)
+	storage2.SetIfMissing(&s.GenerationSettings.VoiceSettings.Stability, 0.5)
+	storage2.SetIfMissing(&s.GenerationSettings.VoiceSettings.UseSpeakerBoost, true)
 }
 
 func (s *Settings) LoadFromProfile(c *gin.Context, profileId string) error {
-	*s = defaultSettings()
 	p := &profile.Data{Id: profileId}
-	if err := storage.LoadFields(c.Request.Context(), p); err != nil {
+	if err := storage2.LoadFields(c.Request.Context(), p); err != nil {
 		return err
 	}
 	sp := SettingsProfile{}
 	if err := json.Unmarshal([]byte(p.SettingsProfile), &sp); err != nil {
 		return err
 	}
-	if sv, ok := sp["version"].(float64); !ok || sv < 2 {
+	if sp.Version < 2 {
 		// version is too old to have a full set of dictionary settings
-		return fmt.Errorf("Profile version %.0f is not supported", sv)
+		return fmt.Errorf("profile version %.0f is not supported", sp.Version)
 	}
 	ws := WhisperSettings{}
 	if err := json.Unmarshal([]byte(p.SettingsProfile), &ws); err != nil {
@@ -85,21 +84,22 @@ func (s *Settings) LoadFromProfile(c *gin.Context, profileId string) error {
 	if id1 != "" && id2 != "" {
 		s.GenerationSettings.PronunciationDictionary = fmt.Sprintf("%s|%s", id1, id2)
 	}
+	s.addMissingSettings()
 	return nil
 }
 
 func (s *Settings) StoreToProfile(c *gin.Context, profileId string) error {
 	p := &profile.Data{Id: profileId}
-	if err := storage.LoadFields(c.Request.Context(), p); err != nil {
+	if err := storage2.LoadFields(c.Request.Context(), p); err != nil {
 		return err
 	}
 	sp := SettingsProfile{}
 	if err := json.Unmarshal([]byte(p.SettingsProfile), &sp); err != nil {
 		return err
 	}
-	if sv, ok := sp["version"].(float64); !ok || sv < 2 {
+	if sp.Version < 2 {
 		// version is too old to have a full set of dictionary settings
-		return fmt.Errorf("settings profile version (%.0f) too old to set")
+		return fmt.Errorf("settings profile version (%.0f) too old to set", sp.Version)
 	}
 	ws := WhisperSettings{}
 	if err := json.Unmarshal([]byte(p.SettingsProfile), &ws); err != nil {
@@ -128,13 +128,13 @@ func (s *Settings) StoreToProfile(c *gin.Context, profileId string) error {
 		return err
 	}
 	eTag := fmt.Sprintf("%02x", md5.Sum(js))
-	sp["settings"] = string(js)
-	sp["eTag"] = eTag
+	sp.Settings = string(js)
+	sp.ETag = eTag
 	js, err = json.Marshal(sp)
 	if err != nil {
 		return err
 	}
 	p.SettingsProfile = string(js)
 	p.SettingsETag = eTag
-	return storage.SaveFields(c.Request.Context(), p)
+	return storage2.SaveFields(c.Request.Context(), p)
 }

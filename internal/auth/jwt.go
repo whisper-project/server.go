@@ -10,8 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 
-	"clickonetwo.io/whisper/server/middleware"
-	"clickonetwo.io/whisper/server/storage"
+	"clickonetwo.io/whisper/server/internal/middleware"
+	"clickonetwo.io/whisper/server/internal/storage"
 )
 
 func CreateApnsJwt(c *gin.Context) (string, error) {
@@ -42,13 +42,13 @@ func CreateApnsJwt(c *gin.Context) (string, error) {
 func ValidateClientJwt(c *gin.Context, signed, id, secret string) bool {
 	key, err := hex.DecodeString(secret)
 	if err != nil || len(key) != 32 {
-		middleware.CtxLogS(c).Errorf("Server-side secret (%q) is corrupt, can't validate client JWT: %v", err)
+		middleware.CtxLogS(c).Errorf("Server-side secret %q is corrupt, can't validate client JWT: %v", secret, err)
 		return false
 	}
 	validator := func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			// notest
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return key, nil
 	}

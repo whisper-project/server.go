@@ -9,10 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"clickonetwo.io/whisper/server/middleware"
-
-	"clickonetwo.io/whisper/server/client"
-	"clickonetwo.io/whisper/server/storage"
+	"clickonetwo.io/whisper/server/internal/client"
+	"clickonetwo.io/whisper/server/internal/middleware"
+	"clickonetwo.io/whisper/server/internal/storage"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -22,7 +21,7 @@ func TestApnsJwt(t *testing.T) {
 	pubKeyPem := "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmVNsF3M0Y5pZHByaeMh05dypQF6A\nfKMzPCOmyQWT1BpU3SKb1drtpi4SgWTWSFA2qnRypH7pEp/oYHWbKTLWgA==\n-----END PUBLIC KEY-----"
 	block, _ := pem.Decode([]byte(pubKeyPem))
 	if block == nil || block.Type != "PUBLIC KEY" {
-		t.Errorf("APNS pubkey PEM decode error")
+		t.Fatalf("APNS pubkey PEM decode error")
 	}
 	key, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
@@ -85,23 +84,23 @@ func TestValidateClientJwt(t *testing.T) {
 	}
 	old := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
 		Issuer:   id,
-		IssuedAt: jwt.NewNumericDate(time.Now().Add(time.Duration(-10 * time.Minute))),
+		IssuedAt: jwt.NewNumericDate(time.Now().Add(-10 * time.Minute)),
 	})
 	oldSigned, _ := old.SignedString(key)
 	if ValidateClientJwt(c, oldSigned, id, secret) {
 		t.Errorf("validated client jwt with older issued at")
 	}
-	new := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
+	newJwt := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
 		Issuer:   id,
-		IssuedAt: jwt.NewNumericDate(time.Now().Add(time.Duration(10 * time.Minute))),
+		IssuedAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
 	})
-	newSigned, _ := new.SignedString(key)
+	newSigned, _ := newJwt.SignedString(key)
 	if ValidateClientJwt(c, newSigned, id, secret) {
 		t.Errorf("validated client jwt with newer issued at")
 	}
 	noIssuer := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
 		ID:       "foo",
-		IssuedAt: jwt.NewNumericDate(time.Now().Add(time.Duration(10 * time.Minute))),
+		IssuedAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
 	})
 	noIssuerSigned, _ := noIssuer.SignedString(key)
 	if ValidateClientJwt(c, noIssuerSigned, id, secret) {

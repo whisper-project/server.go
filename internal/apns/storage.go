@@ -1,6 +1,6 @@
 package apns
 
-type ApnsStorage struct {
+type Storage struct {
 	id        string
 	clientKey string
 	status    int64

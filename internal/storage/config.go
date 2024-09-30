@@ -30,7 +30,7 @@ var (
 		DbKeyPrefix:      "t:",
 	}
 	loadedConfig = testConfig
-	configStack  = []Config{}
+	configStack  []Config
 )
 
 func GetConfig() *Config {

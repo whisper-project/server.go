@@ -3,7 +3,7 @@ package saywhat
 import (
 	"github.com/gin-gonic/gin"
 
-	"clickonetwo.io/whisper/server/middleware"
+	"clickonetwo.io/whisper/server/internal/middleware"
 )
 
 func AddRoutes(r *gin.RouterGroup) {
