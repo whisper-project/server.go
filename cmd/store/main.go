@@ -38,7 +38,7 @@ func main() {
 			if err := json.Unmarshal([]byte(sp.Settings), &ws); err != nil {
 				panic(err)
 			}
-			if ws["elevenlabs_api_key_preference"] != "" && ws["elevenlabs_dictionary_id_preference"] != "" {
+			if ws["elevenlabs_api_key_preference"] != "" {
 				ps = append(ps, *p)
 			}
 		}
@@ -50,7 +50,7 @@ func main() {
 	if err := storage.MapFields(context.Background(), pushProfile, p); err != nil {
 		panic(err)
 	}
-	fmt.Printf("Found %+d profiles to transfer...\n", len(ps))
+	fmt.Printf("Found %d profiles to transfer...\n", len(ps))
 	storage.PopConfig()
 
 	var testList ProfileList = "test-profile-list"
