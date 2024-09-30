@@ -8,17 +8,17 @@ import (
 	"testing"
 
 	"clickonetwo.io/whisper/server/internal/profile"
-	storage2 "clickonetwo.io/whisper/server/internal/storage"
+	"clickonetwo.io/whisper/server/internal/storage"
 )
 
 func TestEnumerateLegacySettingsProfiles(t *testing.T) {
 	if os.Getenv("DO_LEGACY_TESTS") != "YES" {
 		t.Skip("Skipping legacy encoding test")
 	}
-	if err := storage2.PushConfig("../.env.production"); err != nil {
+	if err := storage.PushConfig("../../.env.production"); err != nil {
 		t.Fatalf("Can't load production config: %v", err)
 	}
-	defer storage2.PopConfig()
+	defer storage.PopConfig()
 	d := &profile.Data{}
 	count := 0
 	report := func() {
@@ -43,7 +43,7 @@ func TestEnumerateLegacySettingsProfiles(t *testing.T) {
 			}
 		}
 	}
-	if err := storage2.MapFields(context.Background(), report, d); err != nil {
+	if err := storage.MapFields(context.Background(), report, d); err != nil {
 		t.Fatal(err)
 	}
 	t.Logf("Found %d elevenlabs settings profiles", count)

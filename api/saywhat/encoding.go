@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"clickonetwo.io/whisper/server/internal/profile"
-	storage2 "clickonetwo.io/whisper/server/internal/storage"
+	"clickonetwo.io/whisper/server/internal/storage"
 )
 
 type SettingsProfile struct {
@@ -45,19 +45,19 @@ type VoiceSettings struct {
 
 // / addMissingSettings adds any missing settings expected by Say What.
 func (s *Settings) addMissingSettings() {
-	storage2.SetIfMissing(&s.ApiRoot, "https://api.elevenlabs.io/v1")
-	storage2.SetIfMissing(&s.GenerationSettings.OutputFormat, "mp3_44100_128")
-	storage2.SetIfMissing(&s.GenerationSettings.OptimizeStreamingLatency, "1")
-	storage2.SetIfMissing(&s.GenerationSettings.VoiceId, `pNInz6obpgDQGcFmaJgB`) // Adam - free voice
-	storage2.SetIfMissing(&s.GenerationSettings.ModelId, "eleven_turbo_v2")
-	storage2.SetIfMissing(&s.GenerationSettings.VoiceSettings.SimilarityBoost, 0.5)
-	storage2.SetIfMissing(&s.GenerationSettings.VoiceSettings.Stability, 0.5)
-	storage2.SetIfMissing(&s.GenerationSettings.VoiceSettings.UseSpeakerBoost, true)
+	storage.SetIfMissing(&s.ApiRoot, "https://api.elevenlabs.io/v1")
+	storage.SetIfMissing(&s.GenerationSettings.OutputFormat, "mp3_44100_128")
+	storage.SetIfMissing(&s.GenerationSettings.OptimizeStreamingLatency, "1")
+	storage.SetIfMissing(&s.GenerationSettings.VoiceId, `pNInz6obpgDQGcFmaJgB`) // Adam - free voice
+	storage.SetIfMissing(&s.GenerationSettings.ModelId, "eleven_turbo_v2")
+	storage.SetIfMissing(&s.GenerationSettings.VoiceSettings.SimilarityBoost, 0.5)
+	storage.SetIfMissing(&s.GenerationSettings.VoiceSettings.Stability, 0.5)
+	storage.SetIfMissing(&s.GenerationSettings.VoiceSettings.UseSpeakerBoost, true)
 }
 
 func (s *Settings) LoadFromProfile(c *gin.Context, profileId string) error {
 	p := &profile.Data{Id: profileId}
-	if err := storage2.LoadFields(c.Request.Context(), p); err != nil {
+	if err := storage.LoadFields(c.Request.Context(), p); err != nil {
 		return err
 	}
 	sp := SettingsProfile{}
@@ -90,7 +90,7 @@ func (s *Settings) LoadFromProfile(c *gin.Context, profileId string) error {
 
 func (s *Settings) StoreToProfile(c *gin.Context, profileId string) error {
 	p := &profile.Data{Id: profileId}
-	if err := storage2.LoadFields(c.Request.Context(), p); err != nil {
+	if err := storage.LoadFields(c.Request.Context(), p); err != nil {
 		return err
 	}
 	sp := SettingsProfile{}
@@ -136,5 +136,5 @@ func (s *Settings) StoreToProfile(c *gin.Context, profileId string) error {
 	}
 	p.SettingsProfile = string(js)
 	p.SettingsETag = eTag
-	return storage2.SaveFields(c.Request.Context(), p)
+	return storage.SaveFields(c.Request.Context(), p)
 }

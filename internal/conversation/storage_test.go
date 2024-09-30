@@ -6,17 +6,17 @@ import (
 	"testing"
 	"time"
 
-	storage2 "clickonetwo.io/whisper/server/internal/storage"
+	"clickonetwo.io/whisper/server/internal/storage"
 )
 
 func TestCountLegacyConversations(t *testing.T) {
 	if os.Getenv("DO_LEGACY_TESTS") != "YES" {
 		t.Skip("Skipping legacy client test")
 	}
-	if err := storage2.PushConfig("../.env.production"); err != nil {
+	if err := storage.PushConfig("../../.env.production"); err != nil {
 		t.Fatalf("Can't load production config: %v", err)
 	}
-	defer storage2.PopConfig()
+	defer storage.PopConfig()
 	data := State{}
 	count := 0
 	earliest := time.Now()
@@ -32,7 +32,7 @@ func TestCountLegacyConversations(t *testing.T) {
 		}
 	}
 	ctx := context.Background()
-	if err := storage2.MapFields(ctx, doCount, &data); err != nil {
+	if err := storage.MapFields(ctx, doCount, &data); err != nil {
 		t.Errorf("Failed to map production data: %v", err)
 	} else {
 		t.Logf("Found %d states, earliest at %v, latest at %v", count, earliest, latest)
