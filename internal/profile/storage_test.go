@@ -14,11 +14,31 @@ import (
 	"clickonetwo.io/whisper/server/internal/storage"
 )
 
+func TestEnumerateProfiles(t *testing.T) {
+	d := &Data{}
+	total := 0
+	named := 0
+	settings := 0
+	report := func() {
+		total++
+		if d.Name != "" {
+			named++
+		}
+		if d.SettingsProfile.Settings["elevenlabs_api_key_preference"] != "" {
+			settings++
+		}
+	}
+	if err := storage.MapFields(context.Background(), report, d); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Found %d shared profiles (%d named) of which %d had elevenlabs keys", total, named, settings)
+}
+
 func TestEnumerateLegacyProfiles(t *testing.T) {
 	if os.Getenv("DO_LEGACY_TESTS") != "YES" {
 		t.Skip("Skipping legacy encoding test")
 	}
-	if err := storage.PushConfig("../../.env.production"); err != nil {
+	if err := storage.PushConfig("production"); err != nil {
 		t.Fatalf("Can't load production config: %v", err)
 	}
 	defer storage.PopConfig()
@@ -31,12 +51,12 @@ func TestEnumerateLegacyProfiles(t *testing.T) {
 		if d.Name != "" {
 			named++
 		}
-		if len(d.SettingsProfile) > 0 {
+		if d.SettingsProfile.Settings["elevenlabs_api_key_preference"] != "" {
 			settings++
 		}
 	}
 	if err := storage.MapFields(context.Background(), report, d); err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("Found %d shared profiles (%d named) of which %d had settings profiles", total, named, settings)
+	t.Logf("Found %d shared profiles (%d named) of which %d had elevenlabs keys", total, named, settings)
 }

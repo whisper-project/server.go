@@ -19,15 +19,6 @@ import (
 	"clickonetwo.io/whisper/server/internal/storage"
 )
 
-type SettingsProfile struct {
-	Id       string  `json:"id"`
-	Version  float64 `json:"version"`
-	Settings string  `json:"settings"`
-	ETag     string  `json:"etag"`
-}
-
-type WhisperSettings map[string]string
-
 type Settings struct {
 	ApiKey             string             `json:"api_key"`
 	ApiRoot            string             `json:"api_root"`
@@ -66,18 +57,12 @@ func (s *Settings) LoadFromProfile(c *gin.Context, profileId string) error {
 	if err := storage.LoadFields(c.Request.Context(), p); err != nil {
 		return err
 	}
-	sp := SettingsProfile{}
-	if err := json.Unmarshal([]byte(p.SettingsProfile), &sp); err != nil {
-		return err
-	}
+	sp := p.SettingsProfile
 	if sp.Version < 2 {
 		// version is too old to have a full set of dictionary settings
 		return fmt.Errorf("profile version %.0f is not supported", sp.Version)
 	}
-	ws := WhisperSettings{}
-	if err := json.Unmarshal([]byte(p.SettingsProfile), &ws); err != nil {
-		return err
-	}
+	ws := sp.Settings
 	if i, err := strconv.Atoi(ws["elevenlabs_latency_reduction_preference"]); err == nil {
 		return err
 	} else {
@@ -99,18 +84,12 @@ func (s *Settings) StoreToProfile(c *gin.Context, profileId string) error {
 	if err := storage.LoadFields(c.Request.Context(), p); err != nil {
 		return err
 	}
-	sp := SettingsProfile{}
-	if err := json.Unmarshal([]byte(p.SettingsProfile), &sp); err != nil {
-		return err
-	}
+	sp := p.SettingsProfile
 	if sp.Version < 2 {
 		// version is too old to have a full set of dictionary settings
 		return fmt.Errorf("settings profile version (%.0f) too old to set", sp.Version)
 	}
-	ws := WhisperSettings{}
-	if err := json.Unmarshal([]byte(p.SettingsProfile), &ws); err != nil {
-		return err
-	}
+	ws := sp.Settings
 	ws["elevenlabs_api_key_preference"] = s.ApiKey
 	ws["elevenlabs_voice_id_preference"] = s.GenerationSettings.VoiceId
 	if i, err := strconv.Atoi(s.GenerationSettings.OptimizeStreamingLatency); err == nil {
@@ -134,13 +113,7 @@ func (s *Settings) StoreToProfile(c *gin.Context, profileId string) error {
 		return err
 	}
 	eTag := fmt.Sprintf("%02x", md5.Sum(js))
-	sp.Settings = string(js)
 	sp.ETag = eTag
-	js, err = json.Marshal(sp)
-	if err != nil {
-		return err
-	}
-	p.SettingsProfile = string(js)
 	p.SettingsETag = eTag
 	return storage.SaveFields(c.Request.Context(), p)
 }

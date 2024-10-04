@@ -19,7 +19,7 @@ func TestCountLegacyConversations(t *testing.T) {
 	if os.Getenv("DO_LEGACY_TESTS") != "YES" {
 		t.Skip("Skipping legacy client test")
 	}
-	if err := storage.PushConfig("../../.env.production"); err != nil {
+	if err := storage.PushConfig("production"); err != nil {
 		t.Fatalf("Can't load production config: %v", err)
 	}
 	defer storage.PopConfig()

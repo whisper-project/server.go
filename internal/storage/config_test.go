@@ -21,7 +21,7 @@ func TestPushPopConfig(t *testing.T) {
 			t.Errorf("Config after pop is not the test configuration")
 		}
 	}
-	if err := PushConfig("../../.env.staging"); err != nil {
+	if err := PushConfig("staging"); err != nil {
 		t.Errorf("Failed to push config and load staging configuration")
 	}
 	defer popTest()

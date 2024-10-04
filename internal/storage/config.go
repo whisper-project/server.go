@@ -9,6 +9,7 @@ package storage
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/dotenv-org/godotenvvault"
 )
@@ -43,8 +44,43 @@ func GetConfig() *Config {
 	return &loadedConfig
 }
 
-func PushConfig(from ...string) error {
-	err := godotenvvault.Load(from...)
+func PushConfig(env string) error {
+	if env == "" {
+		return pushEnvConfig("")
+	}
+	if strings.HasPrefix(env, "t") {
+		return pushTestConfig()
+	}
+	if strings.HasPrefix(env, "d") {
+		return pushEnvConfig(".env")
+	}
+	if strings.HasPrefix(env, "s") {
+		return pushEnvConfig(".env.staging")
+	}
+	if strings.HasPrefix(env, "p") {
+		return pushEnvConfig(".env.production")
+	}
+	return fmt.Errorf("unknown environment: %s", env)
+}
+
+func pushTestConfig() error {
+	configStack = append(configStack, loadedConfig)
+	loadedConfig = testConfig
+	return nil
+}
+
+func pushEnvConfig(filename string) error {
+	var err error
+	if filename == "" {
+		err = godotenvvault.Load()
+	} else {
+		for _, f := range []string{filename, "../" + filename, "../../" + filename, "../../../" + filename} {
+			if _, err = os.Stat(f); err == nil {
+				err = godotenvvault.Load(f)
+				break
+			}
+		}
+	}
 	if err != nil {
 		return fmt.Errorf("error loading .env vars: %v", err)
 	}
