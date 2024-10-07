@@ -44,8 +44,8 @@ func init() {
 }
 
 func transfer(from, to string) {
-	var ps []profile.Data
-	p := &profile.Data{}
+	var ps []profile.UserProfile
+	p := &profile.UserProfile{}
 	count := 0
 	pushProfile := func() {
 		if p.SettingsProfile.Settings["elevenlabs_api_key_preference"] != "" {
@@ -81,8 +81,14 @@ func transfer(from, to string) {
 		}
 		ids = append(ids, tp.Id)
 	}
+	if err := storage.DeleteStorage(context.Background(), &testList); err != nil {
+		panic(err)
+	}
 	if err := storage.PushRange(context.Background(), testList, false, ids...); err != nil {
 		panic(err)
 	}
-	_, _ = fmt.Fprintf(os.Stderr, "Transferred profile IDs are in %q with prefix %q", testList.StorageId(), testList.StoragePrefix())
+	_, _ = fmt.Fprintf(
+		os.Stderr, "Transferred profile IDs are in %q with prefix %q\n",
+		testList.StorageId(), testList.StoragePrefix(),
+	)
 }

@@ -54,17 +54,21 @@ func dump(from string) {
 	}
 
 	// assemble dumped form of the transferred profiles
-	dps := make(map[string]profile.Data, len(ids))
+	dps := make(map[string][]profile.UserProfile)
 	for _, id := range ids {
-		p := profile.Data{Id: id}
+		p := profile.UserProfile{Id: id}
 		if err := storage.LoadFields(context.Background(), &p); err != nil {
 			panic(err)
 		}
-		dps[p.Id] = p
+		dps[p.Name] = append(dps[p.Name], p)
 	}
 
 	// dump them
-	if err := json.NewEncoder(os.Stdout).Encode(dps); err != nil {
+	_, _ = fmt.Fprintf(os.Stderr, "Found %d profiles to dump, for %d users.\n", len(ids), len(dps))
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "  ")
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(dps); err != nil {
 		panic(err)
 	}
 	fmt.Println()

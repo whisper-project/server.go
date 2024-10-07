@@ -10,37 +10,91 @@ import (
 	"encoding/json"
 )
 
-type Data struct {
-	Id                 string   `redis:"id" json:"id"`
-	Name               string   `redis:"name" json:"name"`
-	Password           string   `redis:"password" json:"password"`
-	WhisperTimestamp   string   `redis:"whisperTimestamp" json:"whisperTimestamp"`
-	WhisperProfile     string   `redis:"whisperProfile" json:"whisperProfile"`
-	ListenTimestamp    string   `redis:"listenTimestamp" json:"listenTimestamp"`
-	ListenProfile      string   `redis:"listenProfile" json:"listenProfile"`
-	SettingsVersion    int64    `redis:"settingsVersion" json:"settingsVersion"`
-	SettingsETag       string   `redis:"settingsETag" json:"settingsETag"`
-	SettingsProfile    Settings `redis:"settingsProfile" json:"settingsProfile"`
-	FavoritesTimestamp string   `redis:"favoritesTimestamp" json:"favoritesTimestamp"`
-	FavoritesProfile   string   `redis:"favoritesProfile" json:"favoritesProfile"`
+type UserProfile struct {
+	Id                 string         `redis:"id" json:"id"`
+	Name               string         `redis:"name" json:"name"`
+	Password           string         `redis:"password" json:"password"`
+	WhisperTimestamp   string         `redis:"whisperTimestamp" json:"whisperTimestamp"`
+	WhisperProfile     WhisperProfile `redis:"whisperProfile" json:"whisperProfile"`
+	ListenTimestamp    string         `redis:"listenTimestamp" json:"listenTimestamp"`
+	ListenProfile      ListenProfile  `redis:"listenProfile" json:"listenProfile"`
+	SettingsVersion    int64          `redis:"settingsVersion" json:"settingsVersion"`
+	SettingsETag       string         `redis:"settingsETag" json:"settingsETag"`
+	SettingsProfile    AppSettings    `redis:"settingsProfile" json:"settingsProfile"`
+	FavoritesTimestamp string         `redis:"favoritesTimestamp" json:"favoritesTimestamp"`
+	FavoritesProfile   AppFavorites   `redis:"favoritesProfile" json:"favoritesProfile"`
 }
 
-type Settings struct {
-	Id       string      `json:"id"`
-	Version  float64     `json:"version"`
-	Settings AppSettings `json:"settings"`
-	ETag     string      `json:"etag"`
+type WhisperProfile struct {
+	Id        string                   `json:"id"`
+	Timestamp int64                    `json:"timestamp"`
+	DefaultId string                   `json:"defaultId"`
+	LastId    string                   `json:"lastId"`
+	Table     map[string]WhisperRecord `json:"table"`
 }
 
-type AppSettings map[string]string
+type WhisperRecord struct {
+	Id      string            `json:"id"`
+	Name    string            `json:"name"`
+	Allowed map[string]string `json:"allowed"`
+}
 
-func (s Settings) MarshalBinary() ([]byte, error) {
-	// for saving Settings data to Redis as a JSON blob
+func (w WhisperProfile) MarshalBinary() ([]byte, error) {
+	return json.Marshal(UploadedWhisperProfile(w))
+}
+
+func (w *WhisperProfile) UnmarshalText(data []byte) error {
+	var uw UploadedWhisperProfile
+	if err := json.Unmarshal(data, &uw); err != nil {
+		return err
+	}
+	*w = WhisperProfile(uw)
+	return nil
+}
+
+type ListenProfile struct {
+	Id        string                  `json:"id"`
+	Timestamp int64                   `json:"timestamp"`
+	Table     map[string]ListenRecord `json:"table"`
+}
+
+type ListenRecord struct {
+	Id           string  `json:"id"`
+	Name         string  `json:"name"`
+	Owner        string  `json:"owner"`
+	OwnerName    string  `json:"ownerName"`
+	LastListened float64 `json:"lastListened"`
+}
+
+func (l ListenProfile) MarshalBinary() ([]byte, error) {
+	return json.Marshal(UploadedListenProfile(l))
+}
+
+func (l *ListenProfile) UnmarshalText(data []byte) error {
+	var ul UploadedListenProfile
+	if err := json.Unmarshal(data, &ul); err != nil {
+		return err
+	}
+	*l = ListenProfile(ul)
+	return nil
+}
+
+type AppSettings struct {
+	Id       string           `json:"id"`
+	Version  int64            `json:"version"`
+	Settings AppInnerSettings `json:"settings"`
+	ETag     string           `json:"etag"`
+}
+
+type AppInnerSettings map[string]string
+
+func (s AppSettings) MarshalBinary() ([]byte, error) {
+	// for saving AppSettings data to Redis as a JSON blob
 	bytes, err := json.Marshal(s.Settings)
 	if err != nil {
 		return nil, err
 	}
-	us := uploadedSettings{
+	us := UploadedAppSettings{
 		Id:       s.Id,
 		Version:  s.Version,
 		Settings: string(bytes),
@@ -49,17 +103,17 @@ func (s Settings) MarshalBinary() ([]byte, error) {
 	return json.Marshal(us)
 }
 
-func (s *Settings) UnmarshalText(text []byte) error {
-	// for reading Settings data stored to Redis as a JSON blob
-	var uploaded uploadedSettings
+func (s *AppSettings) UnmarshalText(text []byte) error {
+	// for reading AppSettings data stored to Redis as a JSON blob
+	var uploaded UploadedAppSettings
 	if err := json.Unmarshal(text, &uploaded); err != nil {
 		return err
 	}
-	var inner AppSettings
+	var inner AppInnerSettings
 	if err := json.Unmarshal([]byte(uploaded.Settings), &inner); err != nil {
 		return err
 	}
-	*s = Settings{
+	*s = AppSettings{
 		Id:       uploaded.Id,
 		Version:  uploaded.Version,
 		Settings: inner,
@@ -68,18 +122,39 @@ func (s *Settings) UnmarshalText(text []byte) error {
 	return nil
 }
 
-type uploadedSettings struct {
-	Id       string  `json:"id"`
-	Version  float64 `json:"version"`
-	Settings string  `json:"settings"`
-	ETag     string  `json:"etag"`
+type AppFavorites struct {
+	Id         string              `json:"id"`
+	Timestamp  int64               `json:"timestamp"`
+	Favorites  []AppFavorite       `json:"favorites"`
+	GroupList  []string            `json:"groupList"`
+	GroupTable map[string][]string `json:"groupTable"`
 }
 
-func (p Data) StoragePrefix() string {
+type AppFavorite struct {
+	Name       string `json:"name"`
+	Text       string `json:"text"`
+	SpeechId   string `json:"speechId,omitempty"`
+	SpeechHash string `json:"speechHash,omitempty"`
+}
+
+func (f AppFavorites) MarshalBinary() ([]byte, error) {
+	return json.Marshal(UploadedAppFavorites(f))
+}
+
+func (f *AppFavorites) UnmarshalText(text []byte) error {
+	var af UploadedAppFavorites
+	if err := json.Unmarshal(text, &af); err != nil {
+		return err
+	}
+	*f = AppFavorites(af)
+	return nil
+}
+
+func (p UserProfile) StoragePrefix() string {
 	return "pro:"
 }
 
-func (p Data) StorageId() string {
+func (p UserProfile) StorageId() string {
 	return p.Id
 }
 

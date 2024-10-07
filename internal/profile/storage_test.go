@@ -15,7 +15,7 @@ import (
 )
 
 func TestEnumerateProfiles(t *testing.T) {
-	d := &Data{}
+	d := &UserProfile{}
 	total := 0
 	named := 0
 	settings := 0
@@ -42,7 +42,7 @@ func TestEnumerateLegacyProfiles(t *testing.T) {
 		t.Fatalf("Can't load production config: %v", err)
 	}
 	defer storage.PopConfig()
-	d := &Data{}
+	d := &UserProfile{}
 	total := 0
 	named := 0
 	settings := 0

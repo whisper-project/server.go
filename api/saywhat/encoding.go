@@ -53,7 +53,7 @@ func (s *Settings) addMissingSettings() {
 }
 
 func (s *Settings) LoadFromProfile(c *gin.Context, profileId string) error {
-	p := &profile.Data{Id: profileId}
+	p := &profile.UserProfile{Id: profileId}
 	if err := storage.LoadFields(c.Request.Context(), p); err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func (s *Settings) LoadFromProfile(c *gin.Context, profileId string) error {
 }
 
 func (s *Settings) StoreToProfile(c *gin.Context, profileId string) error {
-	p := &profile.Data{Id: profileId}
+	p := &profile.UserProfile{Id: profileId}
 	if err := storage.LoadFields(c.Request.Context(), p); err != nil {
 		return err
 	}

@@ -44,13 +44,13 @@ func LoadFields[T StorableStruct](ctx context.Context, obj *T) error {
 	key := prefix + (*obj).StoragePrefix() + (*obj).StorageId()
 	res := db.HGetAll(ctx, key)
 	if err := res.Err(); err != nil {
-		return err
+		return fmt.Errorf("failed to fetch fields of stored object %s:", key)
 	}
 	if len(res.Val()) == 0 {
 		return fmt.Errorf("stored object %s has no fields", key)
 	}
 	if err := res.Scan(obj); err != nil {
-		return err
+		return fmt.Errorf("stored object %s cannot be read: %v", key, err)
 	}
 	return nil
 }
@@ -78,10 +78,13 @@ func MapFields[T StorableStruct](ctx context.Context, f func(), obj *T) error {
 		key := iter.Val()
 		res := db.HGetAll(ctx, key)
 		if err := res.Err(); err != nil {
-			return err
+			return fmt.Errorf("failed to fetch fields of stored object %s:", key)
+		}
+		if len(res.Val()) == 0 {
+			return fmt.Errorf("stored object %s has no fields", key)
 		}
 		if err := res.Scan(obj); err != nil {
-			return err
+			return fmt.Errorf("stored object %s cannot be read: %v", key, err)
 		}
 		f()
 	}
