@@ -5,7 +5,7 @@
  */
 package main
 
-import "clickonetwo.io/whisper/server/cmd"
+import "clickonetwo.io/whisper/cmd"
 
 func main() {
 	cmd.Execute()

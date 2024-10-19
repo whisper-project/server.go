@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"clickonetwo.io/whisper/server/internal/storage"
+	"clickonetwo.io/whisper/internal/storage"
 )
 
 func TestCountLegacyConversations(t *testing.T) {

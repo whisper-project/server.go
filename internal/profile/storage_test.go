@@ -11,7 +11,7 @@ import (
 	"os"
 	"testing"
 
-	"clickonetwo.io/whisper/server/internal/storage"
+	"clickonetwo.io/whisper/internal/storage"
 )
 
 func TestEnumerateProfiles(t *testing.T) {

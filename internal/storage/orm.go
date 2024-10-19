@@ -110,6 +110,10 @@ func FetchMembers[T StorableSet](ctx context.Context, obj T) ([]string, error) {
 }
 
 func AddMembers[T StorableSet](ctx context.Context, obj T, members ...string) error {
+	if len(members) == 0 {
+		// nothing to add
+		return nil
+	}
 	db, prefix := GetDb()
 	key := prefix + obj.StoragePrefix() + obj.StorageId()
 	args := make([]interface{}, len(members))
@@ -124,6 +128,10 @@ func AddMembers[T StorableSet](ctx context.Context, obj T, members ...string) er
 }
 
 func RemoveMembers[T StorableSet](ctx context.Context, obj T, members ...string) error {
+	if len(members) == 0 {
+		// nothing to delete
+		return nil
+	}
 	db, prefix := GetDb()
 	key := prefix + obj.StoragePrefix() + obj.StorageId()
 	args := make([]interface{}, len(members))

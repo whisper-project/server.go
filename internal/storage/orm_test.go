@@ -143,6 +143,9 @@ func TestAddFetchRemoveMembers(t *testing.T) {
 	if err := AddMembers(ctx, id, saved...); err != nil {
 		t.Errorf("Failed to add saved: %v", err)
 	}
+	if err := AddMembers(ctx, id); err != nil {
+		t.Errorf("Failed to add empty: %v", err)
+	}
 	if found, err := FetchMembers(ctx, id); err != nil {
 		t.Errorf("FetchMembers failed: %v", err)
 	} else if len(found) != 3 {
@@ -150,6 +153,9 @@ func TestAddFetchRemoveMembers(t *testing.T) {
 	}
 	if err := RemoveMembers(ctx, id, "b", "c"); err != nil {
 		t.Errorf("Failed to remove members: %v", err)
+	}
+	if err := RemoveMembers(ctx, id); err != nil {
+		t.Errorf("Failed to remove empty: %v", err)
 	}
 	if found, err := FetchMembers(ctx, id); err != nil {
 		t.Errorf("FetchMembers failed: %v", err)

@@ -11,9 +11,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"clickonetwo.io/whisper/server/api/saywhat"
-	"clickonetwo.io/whisper/server/internal/middleware"
-	"clickonetwo.io/whisper/server/internal/storage"
+	"clickonetwo.io/whisper/api/saywhat"
+	"clickonetwo.io/whisper/internal/middleware"
+	"clickonetwo.io/whisper/internal/storage"
 )
 
 // serveCmd represents the serve command

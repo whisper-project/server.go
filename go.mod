@@ -1,4 +1,4 @@
-module clickonetwo.io/whisper/server
+module clickonetwo.io/whisper
 
 go 1.22.5
 

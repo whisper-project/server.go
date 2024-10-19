@@ -20,7 +20,7 @@ var (
 
 func GetDb() (*redis.Client, string) {
 	config := GetConfig()
-	if client != nil && clientUrl == config.DbUrl {
+	if client != nil && clientUrl == config.DbUrl && keyPrefix == config.DbKeyPrefix {
 		return client, keyPrefix
 	}
 	opts, err := redis.ParseURL(config.DbUrl)

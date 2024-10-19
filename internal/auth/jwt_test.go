@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	"clickonetwo.io/whisper/server/internal/client"
-	"clickonetwo.io/whisper/server/internal/middleware"
-	"clickonetwo.io/whisper/server/internal/storage"
+	"clickonetwo.io/whisper/internal/client"
+	"clickonetwo.io/whisper/internal/middleware"
+	"clickonetwo.io/whisper/internal/storage"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"

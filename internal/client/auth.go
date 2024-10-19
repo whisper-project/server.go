@@ -11,8 +11,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"clickonetwo.io/whisper/server/internal/middleware"
-	"clickonetwo.io/whisper/server/internal/storage"
+	"clickonetwo.io/whisper/internal/middleware"
+	"clickonetwo.io/whisper/internal/storage"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"

@@ -14,8 +14,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"clickonetwo.io/whisper/server/internal/profile"
-	"clickonetwo.io/whisper/server/internal/storage"
+	"clickonetwo.io/whisper/internal/profile"
+	"clickonetwo.io/whisper/internal/storage"
 )
 
 // dumpCmd represents the dump command

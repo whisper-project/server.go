@@ -40,8 +40,8 @@ var (
 	configStack  []Config
 )
 
-func GetConfig() *Config {
-	return &loadedConfig
+func GetConfig() Config {
+	return loadedConfig
 }
 
 func PushConfig(env string) error {
@@ -72,11 +72,11 @@ func pushTestConfig() error {
 func pushEnvConfig(filename string) error {
 	var err error
 	if filename == "" {
-		err = godotenvvault.Load()
+		err = godotenvvault.Overload()
 	} else {
 		for _, f := range []string{filename, "../" + filename, "../../" + filename, "../../../" + filename} {
 			if _, err = os.Stat(f); err == nil {
-				err = godotenvvault.Load(f)
+				err = godotenvvault.Overload(f)
 				break
 			}
 		}
