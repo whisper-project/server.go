@@ -14,7 +14,7 @@ type UploadedAppSettings struct {
 	Id       string `json:"id"`
 	Version  int64  `json:"version"`
 	Settings string `json:"settings"`
-	ETag     string `json:"etag"`
+	ETag     string `json:"eTag"`
 }
 
 type UploadedAppFavorites AppFavorites

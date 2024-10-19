@@ -83,7 +83,7 @@ type AppSettings struct {
 	Id       string           `json:"id"`
 	Version  int64            `json:"version"`
 	Settings AppInnerSettings `json:"settings"`
-	ETag     string           `json:"etag"`
+	ETag     string           `json:"eTag"`
 }
 
 type AppInnerSettings map[string]string
