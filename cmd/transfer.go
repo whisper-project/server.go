@@ -8,7 +8,9 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -24,8 +26,8 @@ var transferCmd = &cobra.Command{
 	Use:   "transfer",
 	Short: "Transfer objects between environments",
 	Long: `This command transfers whisper database objects between environments.
-You must use flags to specify the objects to transfer.
-By default, it transfers from production to development.`,
+You must use a flag to specify which objects you want to transfer.
+When transferring specific objects, you can also dump their JSON to an output file.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		from, err := cmd.Flags().GetString("from")
 		if err != nil {
@@ -47,12 +49,19 @@ By default, it transfers from production to development.`,
 		if err != nil {
 			panic(err)
 		}
+		dump, err := cmd.Flags().GetString("dump")
 		if all {
 			transferAll(from, to)
 		} else if profiles != "" {
-			transferProfiles(from, to, profiles)
+			ps := transferProfiles(from, to, profiles)
+			if dump != "" {
+				dumpObjects(dump, ps, "Profiles")
+			}
 		} else if clients != "" {
-			transferClients(from, to, clients)
+			cs := transferClients(from, to, clients)
+			if dump != "" {
+				dumpObjects(dump, cs, "Clients")
+			}
 		}
 	},
 }
@@ -67,6 +76,7 @@ func init() {
 	transferCmd.Flags().StringP("clients", "c", "", "client ids to transfer")
 	transferCmd.MarkFlagsOneRequired("all", "profiles", "clients")
 	transferCmd.MarkFlagsMutuallyExclusive("all", "profiles", "clients")
+	transferCmd.Flags().StringP("dump", "d", "", "JSON output file ('-' for stdout)")
 }
 
 func transferAll(from, to string) {
@@ -83,7 +93,7 @@ func transferAll(from, to string) {
 	storage.PopConfig()
 }
 
-func transferProfiles(from, to string, profiles string) {
+func transferProfiles(from, to string, profiles string) []profile.UserProfile {
 	_, _ = fmt.Fprintf(os.Stderr, "Transferring profiles from %s to %s...\n", from, to)
 	if err := storage.PushConfig(from); err != nil {
 		panic(err)
@@ -96,9 +106,10 @@ func transferProfiles(from, to string, profiles string) {
 	}
 	saveProfiles(ps, nil)
 	storage.PopConfig()
+	return ps
 }
 
-func transferClients(from, to string, clients string) {
+func transferClients(from, to string, clients string) []client.Data {
 	_, _ = fmt.Fprintf(os.Stderr, "Transferring clients from %s to %s...\n", from, to)
 	if err := storage.PushConfig(from); err != nil {
 		panic(err)
@@ -111,6 +122,7 @@ func transferClients(from, to string, clients string) {
 	}
 	saveClients(cs)
 	storage.PopConfig()
+	return cs
 }
 
 func collectAll() (ps []profile.UserProfile, cs []client.Data, cls map[string][]string) {
@@ -227,4 +239,30 @@ func saveClients(cs []client.Data) {
 		}
 	}
 	_, _ = fmt.Fprintf(os.Stderr, "\nSaved %d client(s).\n", len(cs))
+}
+
+func dumpObjects(where string, what any, name string) {
+	var stream io.Writer
+	if where == "-" {
+		stream = os.Stdout
+	} else {
+		if !strings.HasSuffix(where, ".json") {
+			where = where + ".json"
+		}
+		file, err := os.OpenFile(where, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
+		if err != nil {
+			panic(err)
+		}
+		defer file.Close()
+		stream = file
+	}
+	encoder := json.NewEncoder(stream)
+	encoder.SetIndent("", "  ")
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(what); err != nil {
+		panic(err)
+	}
+	if where != "-" {
+		fmt.Printf("%s dumped to %q\n", name, where)
+	}
 }
