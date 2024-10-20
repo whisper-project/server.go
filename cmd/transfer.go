@@ -8,9 +8,7 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -55,12 +53,12 @@ When transferring specific objects, you can also dump their JSON to an output fi
 		} else if profiles != "" {
 			ps := transferProfiles(from, to, profiles)
 			if dump != "" {
-				dumpObjects(dump, ps, "Profiles")
+				DumpObjects(dump, ps, "Profiles")
 			}
 		} else if clients != "" {
 			cs := transferClients(from, to, clients)
 			if dump != "" {
-				dumpObjects(dump, cs, "Clients")
+				DumpObjects(dump, cs, "Clients")
 			}
 		}
 	},
@@ -239,30 +237,4 @@ func saveClients(cs []client.Data) {
 		}
 	}
 	_, _ = fmt.Fprintf(os.Stderr, "\nSaved %d client(s).\n", len(cs))
-}
-
-func dumpObjects(where string, what any, name string) {
-	var stream io.Writer
-	if where == "-" {
-		stream = os.Stdout
-	} else {
-		if !strings.HasSuffix(where, ".json") {
-			where = where + ".json"
-		}
-		file, err := os.OpenFile(where, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
-		if err != nil {
-			panic(err)
-		}
-		defer file.Close()
-		stream = file
-	}
-	encoder := json.NewEncoder(stream)
-	encoder.SetIndent("", "  ")
-	encoder.SetEscapeHTML(false)
-	if err := encoder.Encode(what); err != nil {
-		panic(err)
-	}
-	if where != "-" {
-		fmt.Printf("%s dumped to %q\n", name, where)
-	}
 }
