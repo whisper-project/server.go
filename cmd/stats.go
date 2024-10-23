@@ -9,11 +9,12 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os"
 	"slices"
-	"strings"
 	"time"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/spf13/cobra"
 
 	"clickonetwo.io/whisper/internal/client"
@@ -58,170 +59,199 @@ func init() {
 	statsCmd.Flags().StringP("path", "p", "/tmp", "directory for dumped content")
 }
 
+var millis30days int64 = 30 * 24 * 60 * 60 * 1000
+
 func stats(from string, path string) {
 	if err := storage.PushConfig(from); err != nil {
 		panic(err)
 	}
 	defer storage.PopConfig()
 
-	profileStats(path)
+	cs := analyzeClients()
+	ps := analyzeProfiles(cs)
+	printClientStats(cs)
+	printProfileStats(ps)
+	if path != "" {
+		dumpClients(path, cs)
+		dumpProfiles(path, ps)
+	}
 }
 
-type UserSummary struct {
-	Username      string              `json:"username"`
-	LastUpdated   time.Time           `json:"last_updated"`
-	LastUsed      time.Time           `json:"last_used"`
-	ProfileId     string              `json:"profile_id"`
-	IsShared      bool                `json:"is_shared"`
-	Clients       []client.Data       `json:"clients"`
-	ElevenLabsKey string              `json:"eleven_labs_key"`
-	UserProfile   profile.UserProfile `json:"user_profile"`
+type clientStatistics struct {
+	clients          map[string]client.Data
+	lastLaunched     map[string]int64 // profile ID to last launch time
+	recentlyLaunched int64
+	builds           map[string]int64 // build info to count of clients
 }
 
-type UserStats struct {
-	name         string
-	profileCount int
-	sharedCount  int
-	keyCount     int
-	clientCount  int
-	unusedCount  int
+func newClientStatistics() clientStatistics {
+	return clientStatistics{
+		clients:      make(map[string]client.Data),
+		lastLaunched: make(map[string]int64),
+		builds:       make(map[string]int64),
+	}
 }
 
-func profileStats(path string) {
-	// profile classification logic
-	byName := make(map[string][]UserSummary)
+func analyzeClients() clientStatistics {
+	cs := newClientStatistics()
+	c := client.Data{}
+	processed := 0
+	now := time.Now().UnixMilli()
+	classify := func() {
+		cs.clients[c.Id] = c
+		if processed++; processed%10 == 0 {
+			_, _ = fmt.Fprintf(os.Stderr, "\nProcessed %d clients...", processed)
+		}
+		if now-c.LastLaunch <= millis30days {
+			cs.recentlyLaunched++
+		}
+		cs.lastLaunched[c.ProfileId] = max(cs.lastLaunched[c.ProfileId], c.LastLaunch)
+		cs.builds[c.AppInfo] += 1
+	}
+
+	// collect the client data
+	_, _ = fmt.Fprintf(os.Stderr, "Starting to process clients...")
+	if err := storage.MapFields(context.Background(), classify, &c); err != nil {
+		panic(err)
+	}
+	_, _ = fmt.Fprintf(os.Stderr, "\nProcessed %d clients.\n", processed)
+
+	return cs
+}
+
+type profileStatistics struct {
+	anonymous         map[string]profile.UserProfile
+	abandoned         map[string]profile.UserProfile
+	inactive          map[string]profile.UserProfile
+	active            map[string]profile.UserProfile
+	priorWhisperers   []string
+	currentWhisperers []string
+	priorListeners    []string
+	currentListeners  []string
+	webListeners      []string
+}
+
+func newProfileStatistics() profileStatistics {
+	return profileStatistics{
+		anonymous: make(map[string]profile.UserProfile),
+		abandoned: make(map[string]profile.UserProfile),
+		inactive:  make(map[string]profile.UserProfile),
+		active:    make(map[string]profile.UserProfile),
+	}
+}
+
+func analyzeProfiles(cs clientStatistics) profileStatistics {
+	// profile classification logic: anonymous and abandoned profiles don't get statistics
+	ps := newProfileStatistics()
+	allIds := mapset.NewSet[string]()
+	whisperers := mapset.NewSet[string]() // profile ids that people have listened to
+	listeners := mapset.NewSet[string]()  // profiles ids that have listened to people
 	processed := 0
 	p := profile.UserProfile{}
 	classify := func() {
-		ids, err := storage.FetchMembers(context.Background(), profile.Clients(p.Id))
-		if err != nil {
-			panic(err)
-		}
-		cs := make([]client.Data, 0, len(ids))
-		lastUsed := time.UnixMilli(0)
-		for _, clientId := range ids {
-			c := client.Data{Id: clientId}
-			if err := storage.LoadFields(context.Background(), &c); err != nil {
-				panic(err)
-			}
-			cs = append(cs, c)
-			last := time.UnixMilli(c.LastLaunch)
-			if last.After(lastUsed) {
-				lastUsed = last
-			}
-		}
-		s := UserSummary{
-			Username:      p.Name,
-			LastUpdated:   time.Unix(max(p.WhisperProfile.Timestamp, p.ListenProfile.Timestamp), 0),
-			LastUsed:      lastUsed,
-			ProfileId:     p.Id,
-			IsShared:      p.Password != "",
-			Clients:       cs,
-			ElevenLabsKey: p.SettingsProfile.Settings["elevenlabs_api_key_preference"],
-			UserProfile:   p,
-		}
-		byName[p.Name] = append(byName[p.Name], s)
-		processed++
-		if (processed % 10) == 0 {
+		allIds.Add(p.Id)
+		if processed++; processed%10 == 0 {
 			_, _ = fmt.Fprintf(os.Stderr, "\nProcessed %d profiles...", processed)
 		}
+		if p.Name == "" {
+			ps.anonymous[p.Id] = p
+			return
+		}
+		if p.LastUsed == 0 {
+			p.LastUsed = max(p.WhisperProfile.Timestamp*1000, p.ListenProfile.Timestamp*1000, cs.lastLaunched[p.Id])
+		}
+		if cs.lastLaunched[p.Id] == 0 {
+			if p.Password == "" {
+				ps.abandoned[p.Id] = p
+				return
+			}
+			if time.Now().UnixMilli()-p.LastUsed > millis30days {
+				// shared, but not used in 30 days
+				ps.abandoned[p.Id] = p
+				return
+			}
+			ps.inactive[p.Id] = p
+		} else {
+			ps.active[p.Id] = p
+		}
+		listeners.Append(allowedListeners(p.WhisperProfile)...)
+		whisperers.Append(pastWhisperers(p.ListenProfile)...)
 	}
 
-	// do the classification
+	// collect the profile data
+	_, _ = fmt.Fprintf(os.Stderr, "Starting to process profiles...")
 	if err := storage.MapFields(context.Background(), classify, &p); err != nil {
 		panic(err)
 	}
 	_, _ = fmt.Fprintf(os.Stderr, "\nProcessed %d profiles.\n", processed)
 
-	// order the profiles by most recent use descending
-	for _, ss := range byName {
-		slices.SortFunc(ss, func(a, b UserSummary) int {
-			switch diff := a.LastUsed.Sub(b.LastUsed); {
-			case diff > 0:
-				return -1
-			case diff < 0:
-				return 1
-			default:
-				return 0
-			}
-		})
+	// prune whisperer and listener profiles
+	for _, id := range whisperers.ToSlice() {
+		if _, isActive := ps.active[id]; isActive {
+			ps.currentWhisperers = append(ps.currentWhisperers, id)
+		} else {
+			ps.priorListeners = append(ps.priorListeners, id)
+		}
 	}
-
-	// compute the user stats
-	userStats := make([]UserStats, 0, len(byName)-1)
-	for n, ss := range byName {
-		if n == "" {
-			continue
+	for _, id := range listeners.ToSlice() {
+		if !allIds.Contains(id) {
+			ps.webListeners = append(ps.webListeners, id)
+		} else if _, isActive := ps.active[id]; isActive {
+			ps.currentListeners = append(ps.currentListeners, id)
+		} else {
+			ps.priorListeners = append(ps.priorListeners, id)
 		}
-		user := UserStats{
-			name:         n,
-			profileCount: len(ss),
-			sharedCount:  sharedLen(ss),
-			keyCount:     keyLen(ss),
-			clientCount:  clientLen(ss),
-			unusedCount:  unusedLen(ss, 30),
-		}
-		userStats = append(userStats, user)
 	}
-	slices.SortFunc(userStats, func(a, b UserStats) int {
-		if a.profileCount == b.profileCount {
-			return strings.Compare(strings.ToLower(a.name), strings.ToLower(b.name))
-		}
-		return b.profileCount - a.profileCount
-	})
+	return ps
+}
 
+func printProfileStats(ps profileStatistics) {
 	// print the stats
-	fmt.Printf("There are %d anonymous profiles (shared: %d, unused 30 days: %d).\n",
-		len(byName[""]), sharedLen(byName[""]), unusedLen(byName[""], 30))
-	fmt.Printf("These are %d named profiles:\n", processed-len(byName[""]))
-	for _, s := range userStats {
-		fmt.Printf("    %s: %d profiles, %d shared, %d with keys, %d on devices, %d unused 30 days\n",
-			s.name, s.profileCount, s.sharedCount, s.keyCount, s.clientCount, s.unusedCount)
-	}
-
-	// dump the content
-	if path == "" {
-		return
-	}
-	DumpObjects(path+"/profiles.json", byName, "Profiles")
+	fmt.Printf("There are %d anonymous profiles.\n", len(ps.anonymous))
+	fmt.Printf("There are %d abandoned profiles.\n", len(ps.abandoned))
+	fmt.Printf("There are %d inactive, recently-used, shared profiles.\n", len(ps.inactive))
+	fmt.Printf("There are %d active profiles:\n", len(ps.active))
+	fmt.Printf("    %d current whisperers and %d prior whisperers.\n",
+		len(ps.currentWhisperers), len(ps.priorWhisperers))
+	fmt.Printf("    %d current listeners, %d prior listeners, and %d web listeners.\n",
+		len(ps.currentListeners), len(ps.priorListeners), len(ps.webListeners))
 }
 
-func sharedLen(ss []UserSummary) int {
-	count := 0
-	for _, s := range ss {
-		if s.IsShared {
-			count++
-		}
+func printClientStats(cs clientStatistics) {
+	fmt.Printf("There are %d clients.\n", len(cs.clients))
+	builds := slices.Collect(maps.Keys(cs.builds))
+	slices.Sort(builds)
+	fmt.Printf("Client build distribution:\n")
+	for _, b := range builds {
+		fmt.Printf("    %s: %d\n", b, cs.builds[b])
 	}
-	return count
 }
 
-func unusedLen(ss []UserSummary, days int) int {
-	count := 0
-	for _, s := range ss {
-		if time.Now().Sub(s.LastUpdated) > time.Duration(days*24)*time.Hour {
-			count++
-		}
-	}
-	return count
+func dumpProfiles(path string, ps profileStatistics) {
+	DumpObjects(path+"/profiles-anonymous.json", ps.anonymous, "Anonymous profiles")
+	DumpObjects(path+"/profiles-abandoned.json", ps.abandoned, "Abandoned profiles")
+	DumpObjects(path+"/profiles-inactive.json", ps.inactive, "Inactive, recently-used, shared profiles")
+	DumpObjects(path+"/profiles-active.json", ps.active, "Active profiles")
 }
 
-func keyLen(ss []UserSummary) int {
-	count := 0
-	for _, s := range ss {
-		if s.ElevenLabsKey != "" {
-			count++
-		}
-	}
-	return count
+func dumpClients(path string, cs clientStatistics) {
+	DumpObjects(path+"/clients.json", cs.clients, "Clients")
 }
 
-func clientLen(ss []UserSummary) int {
-	count := 0
-	for _, s := range ss {
-		if len(s.Clients) > 0 {
-			count++
+func allowedListeners(w profile.WhisperProfile) []string {
+	var ls []string
+	for _, v := range w.Table {
+		for id := range v.Allowed {
+			ls = append(ls, id)
 		}
 	}
-	return count
+	return ls
+}
+
+func pastWhisperers(w profile.ListenProfile) []string {
+	var ws []string
+	for _, l := range w.Table {
+		ws = append(ws, l.Owner)
+	}
+	return ws
 }

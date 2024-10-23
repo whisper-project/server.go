@@ -12,6 +12,7 @@ import (
 
 type UserProfile struct {
 	Id                 string         `redis:"id" json:"id"`
+	LastUsed           int64          `redis:"lastUsed" json:"lastUsed"`
 	Name               string         `redis:"name" json:"name"`
 	Password           string         `redis:"password" json:"password"`
 	WhisperTimestamp   string         `redis:"whisperTimestamp" json:"whisperTimestamp"`

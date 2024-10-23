@@ -40,11 +40,12 @@ type VoiceSettings struct {
 	UseSpeakerBoost bool    `json:"use_speaker_boost"`
 }
 
-// / addMissingSettings adds any missing settings expected by Say What.
+// addMissingSettings adds any missing settings expected by Say What.
 func (s *Settings) addMissingSettings() {
 	storage.SetIfMissing(&s.ApiRoot, "https://api.elevenlabs.io/v1")
 	storage.SetIfMissing(&s.GenerationSettings.OutputFormat, "mp3_44100_128")
 	storage.SetIfMissing(&s.GenerationSettings.OptimizeStreamingLatency, "1")
+	//goland:noinspection SpellCheckingInspection
 	storage.SetIfMissing(&s.GenerationSettings.VoiceId, `pNInz6obpgDQGcFmaJgB`) // Adam - free voice
 	storage.SetIfMissing(&s.GenerationSettings.ModelId, "eleven_turbo_v2")
 	storage.SetIfMissing(&s.GenerationSettings.VoiceSettings.SimilarityBoost, 0.5)
@@ -60,7 +61,7 @@ func (s *Settings) LoadFromProfile(c *gin.Context, profileId string) error {
 	sp := p.SettingsProfile
 	if sp.Version < 2 {
 		// version is too old to have a full set of dictionary settings
-		return fmt.Errorf("profile version %.0f is not supported", sp.Version)
+		return fmt.Errorf("profile version %d is not supported", sp.Version)
 	}
 	ws := sp.Settings
 	if i, err := strconv.Atoi(ws["elevenlabs_latency_reduction_preference"]); err == nil {
@@ -87,7 +88,7 @@ func (s *Settings) StoreToProfile(c *gin.Context, profileId string) error {
 	sp := p.SettingsProfile
 	if sp.Version < 2 {
 		// version is too old to have a full set of dictionary settings
-		return fmt.Errorf("settings profile version (%.0f) too old to set", sp.Version)
+		return fmt.Errorf("settings profile version (%d) too old to set", sp.Version)
 	}
 	ws := sp.Settings
 	ws["elevenlabs_api_key_preference"] = s.ApiKey
