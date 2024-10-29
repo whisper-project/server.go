@@ -27,27 +27,15 @@ var statsCmd = &cobra.Command{
 	Use:   "stats",
 	Short: "Compute statistics about database content",
 	Long: `Compute statistics about the profiles, clients, and conversations
-to be found in the database in the specified environment.
-Optionally dumps the database content to a JSON file.`,
+to be found in the database in the specified environment.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		var err error
-		var from, path string
-		var dump bool
+		var from string
 		from, err = cmd.Flags().GetString("from")
 		if err != nil {
 			panic(err)
 		}
-		dump, err = cmd.Flags().GetBool("dump")
-		if err != nil {
-			panic(err)
-		}
-		if dump {
-			path, err = cmd.Flags().GetString("path")
-			if err != nil {
-				panic(err)
-			}
-		}
-		stats(from, path)
+		stats(from)
 	},
 }
 
@@ -61,7 +49,7 @@ func init() {
 
 var millis30days int64 = 30 * 24 * 60 * 60 * 1000
 
-func stats(from string, path string) {
+func stats(from string) {
 	if err := storage.PushConfig(from); err != nil {
 		panic(err)
 	}
@@ -71,10 +59,6 @@ func stats(from string, path string) {
 	ps := analyzeProfiles(cs)
 	printClientStats(cs)
 	printProfileStats(ps)
-	if path != "" {
-		dumpClients(path, cs)
-		dumpProfiles(path, ps)
-	}
 }
 
 type clientStatistics struct {
@@ -225,17 +209,6 @@ func printClientStats(cs clientStatistics) {
 	for _, b := range builds {
 		fmt.Printf("    %s: %d\n", b, cs.builds[b])
 	}
-}
-
-func dumpProfiles(path string, ps profileStatistics) {
-	DumpObjects(path+"/profiles-anonymous.json", ps.anonymous, "Anonymous profiles")
-	DumpObjects(path+"/profiles-abandoned.json", ps.abandoned, "Abandoned profiles")
-	DumpObjects(path+"/profiles-inactive.json", ps.inactive, "Inactive, recently-used, shared profiles")
-	DumpObjects(path+"/profiles-active.json", ps.active, "Active profiles")
-}
-
-func dumpClients(path string, cs clientStatistics) {
-	DumpObjects(path+"/clients.json", cs.clients, "Clients")
 }
 
 func allowedListeners(w profile.WhisperProfile) []string {
