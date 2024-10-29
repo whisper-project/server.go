@@ -21,22 +21,19 @@ import (
 // HasAuthChanged determines whether the client requires new authorization data.
 //
 // See [RefreshSecret] for more about secret rotation.
-func (data *Data) HasAuthChanged(c *gin.Context) (bool, string) {
-	existing := &Data{Id: data.Id}
+func (d *Data) HasAuthChanged(c *gin.Context) (bool, string) {
+	existing := &Data{Id: d.Id}
 	if err := storage.LoadFields(c.Request.Context(), existing); err != nil {
 		return true, "APNS token from new"
 	}
-	if existing.LastSecret != data.LastSecret {
+	if existing.LastSecret != d.LastSecret {
 		return true, "unconfirmed secret from existing"
 	}
-	if existing.Token != data.Token {
+	if existing.Token != d.Token {
 		return true, "new APNS token from existing"
 	}
-	if existing.AppInfo != data.AppInfo {
+	if existing.AppInfo != d.AppInfo {
 		return true, "new build data from existing"
-	}
-	if data.IsPresenceLogging == 0 {
-		return true, "no presence logging from existing"
 	}
 	return false, ""
 }
@@ -52,23 +49,23 @@ func (data *Data) HasAuthChanged(c *gin.Context) (bool, string) {
 // and the server rotates the secret when that happens.  Clients sign auth requests
 // with the current secret, but the server allows use of the prior
 // secret as a fallback when the client has gone out of sync.
-func (data *Data) RefreshSecret(c *gin.Context, force bool) (bool, error) {
-	if data.Token == "" {
-		return false, fmt.Errorf("can't have a secret without a device token: %#v", data)
+func (d *Data) RefreshSecret(c *gin.Context, force bool) (bool, error) {
+	if d.Token == "" {
+		return false, fmt.Errorf("can't have a secret without a device token: %#v", d)
 	}
-	if force || data.Secret == "" || data.SecretDate == 0 {
-		if data.Secret != "" && data.SecretDate == 0 {
+	if force || d.Secret == "" || d.SecretDate == 0 {
+		if d.Secret != "" && d.SecretDate == 0 {
 			// a secret has been issued for this client, but it's never been received.
 			// since these are often sent twice, it's important not to change it in case
 			// there was simply a delay in responding to the notification.
-			middleware.CtxLogS(c).Infow("Reusing sent-but-never-received secret", "client", data.Id)
+			middleware.CtxLogS(c).Infow("Reusing sent-but-never-received secret", "client", d.Id)
 		} else {
-			middleware.CtxLogS(c).Infow("Issuing a new secret", "client", data.Id)
-			data.Secret = MakeNonce()
-			data.SecretDate = 0
+			middleware.CtxLogS(c).Infow("Issuing a new secret", "client", d.Id)
+			d.Secret = MakeNonce()
+			d.SecretDate = 0
 		}
-		data.PushId = uuid.New().String()
-		if err := storage.SaveFields(c.Request.Context(), data); err != nil {
+		d.PushId = uuid.New().String()
+		if err := storage.SaveFields(c.Request.Context(), d); err != nil {
 			return false, err
 		}
 		return true, nil

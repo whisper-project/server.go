@@ -18,7 +18,7 @@ import (
 
 func TestHasAuthChanged(t *testing.T) {
 	c, _ := middleware.CreateTestContext()
-	received := Data{Id: uuid.New().String(), ProfileId: uuid.New().String(), IsPresenceLogging: 1}
+	received := Data{Id: uuid.New().String(), ProfileId: uuid.New().String()}
 	yes, why := received.HasAuthChanged(c)
 	if yes != true || why != "APNS token from new" {
 		t.Errorf("HasAuthChanged() = %v, %q; want %v, %q", yes, why, true, "APNS token from new")
@@ -53,11 +53,6 @@ func TestHasAuthChanged(t *testing.T) {
 	}
 	if err := storage.SaveFields(c.Request.Context(), &received); err != nil {
 		t.Errorf("Failed to save stored data for client %q: %v", received.Id, err)
-	}
-	received.IsPresenceLogging = 0
-	yes, why = received.HasAuthChanged(c)
-	if yes != true || why != "no presence logging from existing" {
-		t.Errorf("HasAuthChanged() = %v, %q; want %v, %q", yes, why, true, "no presence logging from existing")
 	}
 	if err := storage.DeleteStorage(c.Request.Context(), &received); err != nil {
 		t.Errorf("Failed to delete stored data for client %q: %v", received.Id, err)

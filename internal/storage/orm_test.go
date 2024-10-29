@@ -8,6 +8,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -23,12 +24,39 @@ type OrmTestStruct struct {
 	Secret            string    `redis:"secret"`
 }
 
-func (data OrmTestStruct) StoragePrefix() string {
+func (data *OrmTestStruct) StoragePrefix() string {
 	return "ormTestPrefix:"
 }
 
-func (data OrmTestStruct) StorageId() string {
+func (data *OrmTestStruct) StorageId() string {
+	if data == nil {
+		return ""
+	}
 	return data.IdField
+}
+
+func (data *OrmTestStruct) SetStorageId(id string) error {
+	if data == nil {
+		return fmt.Errorf("can't set storage id of nil struct")
+	}
+	data.IdField = id
+	return nil
+}
+
+func (data *OrmTestStruct) Copy() any {
+	if data == nil {
+		return nil
+	}
+	n := new(OrmTestStruct)
+	*n = *data
+	return any(n)
+}
+
+func (data OrmTestStruct) Downgrade(in any) (StorableStruct, error) {
+	if o, ok := in.(OrmTestStruct); ok {
+		return &o, nil
+	}
+	return nil, fmt.Errorf("not an OrmTestStruct: %#v", in)
 }
 
 func TestNilOrmTester(t *testing.T) {
@@ -50,7 +78,7 @@ func TestNilOrmTester(t *testing.T) {
 func TestLoadMissingOrmTester(t *testing.T) {
 	data := &OrmTestStruct{IdField: uuid.New().String()}
 	if err := LoadFields(context.Background(), data); err == nil {
-		t.Errorf("Found stored data for new client %q", data.IdField)
+		t.Errorf("Found stored data for new test object %q", data.IdField)
 	}
 }
 
@@ -63,7 +91,8 @@ func TestSaveLoadDeleteOrmTester(t *testing.T) {
 	if err := SaveFields(context.Background(), &saved); err != nil {
 		t.Errorf("Failed to save stored data for %q: %v", id, err)
 	}
-	loaded := OrmTestStruct{IdField: id}
+	var loaded OrmTestStruct
+	_ = loaded.SetStorageId(id)
 	if err := LoadFields(context.Background(), &loaded); err != nil {
 		t.Errorf("Failed to load stored data for %q: %v", id, err)
 	}
@@ -104,7 +133,7 @@ func TestSaveMapDeleteOrmTester(t *testing.T) {
 		}
 	}
 	if err := MapFields(ctx, mapper, &loaded); err != nil {
-		t.Errorf("Failed to map stored data in pass 1: %v", err)
+		t.Fatalf("Failed to map stored data in pass 1: %v", err)
 	}
 	if !found {
 		t.Errorf("Mapped over %#v objects; never found one with secret %q", count, id)
@@ -114,7 +143,39 @@ func TestSaveMapDeleteOrmTester(t *testing.T) {
 		t.Errorf("Failed to map stored data in pass 2: %v", err)
 	}
 	if count != 0 {
-		t.Errorf("Mapped over %#v objects; wanted %#v", count, 0)
+		t.Fatalf("Mapped over %#v objects; wanted %#v", count, 0)
+	}
+}
+
+func TestCopyDowngradeOrmTester(t *testing.T) {
+	var orig *OrmTestStruct = nil
+	//goland:noinspection GoDfaNilDereference
+	copiedOrig := orig.Copy()
+	if copiedOrig != nil {
+		t.Errorf("copy of nil OrmTestStruct pointer wasn't nil!")
+	}
+	orig = &OrmTestStruct{IdField: uuid.New().String(), Secret: "shh!"}
+	copiedOrig = orig.Copy()
+	c, ok := copiedOrig.(*OrmTestStruct)
+	if !ok {
+		t.Errorf("copy of OrmTestStruct was not a OrmTestStruct: %#v", copiedOrig)
+	}
+	if diff := deep.Equal(c, copiedOrig); diff != nil {
+		t.Errorf("copy of OrmTestStruct differs: %v", diff)
+	}
+	if c == orig {
+		t.Errorf("copy of OrmTestStruct has same address as original: %p, %p", c, orig)
+	}
+	var template OrmTestStruct
+	downgradedCopy, err := template.Downgrade(*c)
+	if err != nil {
+		t.Errorf("Failed to downgrade OrmTestStruct: %v", err)
+	}
+	if _, ok := downgradedCopy.(*OrmTestStruct); !ok {
+		t.Errorf("Downgraded copy has wrong type: %T", downgradedCopy)
+	}
+	if diff := deep.Equal(downgradedCopy, orig); diff != nil {
+		t.Errorf("Downgraded copy differs from original: %v", diff)
 	}
 }
 

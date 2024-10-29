@@ -6,7 +6,12 @@
 
 package storage
 
-import "testing"
+import (
+	"os"
+	"testing"
+
+	"github.com/go-test/deep"
+)
 
 func TestGetConfig(t *testing.T) {
 	if GetConfig() != testConfig {
@@ -15,6 +20,9 @@ func TestGetConfig(t *testing.T) {
 }
 
 func TestPushPopConfig(t *testing.T) {
+	if GetConfig() != testConfig {
+		t.Errorf("Initial configuration is not the test configuration")
+	}
 	popTest := func() {
 		PopConfig()
 		if GetConfig() != testConfig {
@@ -31,6 +39,9 @@ func TestPushPopConfig(t *testing.T) {
 }
 
 func TestPushPopFailedConfig(t *testing.T) {
+	if GetConfig() != testConfig {
+		t.Errorf("Initial configuration is not the test configuration")
+	}
 	if err := PushConfig(".no-such-environment-file"); err == nil {
 		t.Errorf("Was able to push a non-existent environment")
 	}
@@ -41,6 +52,9 @@ func TestPushPopFailedConfig(t *testing.T) {
 }
 
 func TestMultiPushPopConfig(t *testing.T) {
+	if GetConfig() != testConfig {
+		t.Errorf("Initial configuration is not the test configuration")
+	}
 	configT := GetConfig()
 	if configT.DbKeyPrefix != "t:" {
 		t.Errorf("Initial config prefix is wrong: %q", configT.DbKeyPrefix)
@@ -89,5 +103,93 @@ func TestMultiPushPopConfig(t *testing.T) {
 	configT2 := GetConfig()
 	if configT2 != configT {
 		t.Errorf("Test config before and after pop are different")
+	}
+	if GetConfig() != testConfig {
+		t.Errorf("Terminal configuration is not the test configuration")
+	}
+}
+
+func TestPushPopPopTestConfig(t *testing.T) {
+	if err := PushConfig("test"); err != nil {
+		t.Fatalf("Failed to push configuration: %v", err)
+	}
+	if GetConfig() != testConfig {
+		t.Errorf("Pushed configuration is not the test configuration")
+	}
+	PopConfig()
+	if GetConfig() != testConfig {
+		t.Errorf("Popped configuration is not the test configuration")
+	}
+	PopConfig()
+	if GetConfig() != testConfig {
+		t.Errorf("Overpopped configuration is not the test configuration")
+	}
+}
+
+func TestPushVaultConfig(t *testing.T) {
+	if GetConfig() != testConfig {
+		t.Errorf("Initial configuration is not the test configuration")
+	}
+	var o, n string
+	var err error
+	// because we have no environment support, the vault load will load the unencrypted (dev) environment
+	if err = PushConfig("development"); err != nil {
+		t.Fatalf("Failed to push production configuration: %v", err)
+	}
+	defer PopConfig()
+	prodConfig := GetConfig()
+	if o, err = os.Getwd(); err != nil {
+		t.Fatalf("Failed to get before directory: %v", err)
+	}
+	if err = PushConfig(""); err != nil {
+		t.Fatalf("Failed to push encrypted configuration: %v", err)
+	}
+	defer PopConfig()
+	if n, err = os.Getwd(); err != nil {
+		t.Fatalf("Failed to get after directory: %v", err)
+	}
+	if n != o {
+		t.Errorf("Directory after (%s) not same as directory before (%s) push", n, o)
+	}
+	encryptedConfig := GetConfig()
+	if diff := deep.Equal(prodConfig, encryptedConfig); diff != nil {
+		t.Errorf("Pushed encrypted configuration doesn't match the pushed production configuration: %v", diff)
+	}
+}
+
+func TestFindEnvFile(t *testing.T) {
+	if GetConfig() != testConfig {
+		t.Errorf("Initial configuration is not the test configuration")
+	}
+	if _, err := findEnvFile(".env.no-such-environment-file"); err == nil {
+		t.Errorf("Didn't err when file didn't exist in parent")
+	}
+	if d, err := findEnvFile(".env.vault"); err != nil {
+		t.Errorf("Didn't find .env.vault in parent")
+	} else {
+		if d != "../../" {
+			t.Errorf("Found .env.vault in wrong parent")
+		}
+	}
+}
+
+func TestFindVaultLocally(t *testing.T) {
+	c, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get working directory: %v", err)
+	}
+	d, err := findEnvFile(".env.vault")
+	if err != nil {
+		t.Fatalf("Didn't find .env.vault in parent")
+	}
+	if err = os.Chdir(d); err != nil {
+		t.Fatalf("Failed to chdir into parent dir: %v", err)
+	}
+	if err = pushEnvConfig(""); err != nil {
+		t.Errorf("Failed to find local .env.vault: %v", err)
+	}
+	defer PopConfig()
+	if err = os.Chdir(c); err != nil {
+		t.Fatalf("Failed to return to child directory: %v", err)
 	}
 }

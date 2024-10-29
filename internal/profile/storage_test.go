@@ -8,55 +8,83 @@ package profile
 
 import (
 	"context"
-	"os"
+	"encoding/json"
+	"strings"
 	"testing"
+
+	"github.com/go-test/deep"
+	"github.com/google/uuid"
 
 	"clickonetwo.io/whisper/internal/storage"
 )
 
-func TestEnumerateProfiles(t *testing.T) {
-	d := &UserProfile{}
-	total := 0
-	named := 0
-	settings := 0
-	report := func() {
-		total++
-		if d.Name != "" {
-			named++
-		}
-		if d.SettingsProfile.Settings["elevenlabs_api_key_preference"] != "" {
-			settings++
-		}
-	}
-	if err := storage.MapFields(context.Background(), report, d); err != nil {
+var (
+	knownUserId   = "B11C1B3D-21E6-4766-B16B-4FDEED785139"
+	knownUserName = "Dan Brotsky"
+)
+
+func TestWhisperProfileJsonMarshaling(t *testing.T) {
+	p1 := UserProfile{Id: knownUserId}
+	if err := storage.LoadFields(context.Background(), &p1); err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("Found %d shared profiles (%d named) of which %d had elevenlabs keys", total, named, settings)
+	bytes, err := json.Marshal(p1.WhisperProfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p2 WhisperProfile
+	if err := json.Unmarshal(bytes, &p2); err != nil {
+		t.Fatal(err)
+	}
+	if diff := deep.Equal(p1.WhisperProfile, p2); diff != nil {
+		t.Error(diff)
+	}
 }
 
-func TestEnumerateLegacyProfiles(t *testing.T) {
-	if os.Getenv("DO_LEGACY_TESTS") != "YES" {
-		t.Skip("Skipping legacy encoding test")
-	}
-	if err := storage.PushConfig("production"); err != nil {
-		t.Fatalf("Can't load production config: %v", err)
-	}
-	defer storage.PopConfig()
-	d := &UserProfile{}
-	total := 0
-	named := 0
-	settings := 0
-	report := func() {
-		total++
-		if d.Name != "" {
-			named++
-		}
-		if d.SettingsProfile.Settings["elevenlabs_api_key_preference"] != "" {
-			settings++
-		}
-	}
-	if err := storage.MapFields(context.Background(), report, d); err != nil {
+func TestUserProfileJsonMarshaling(t *testing.T) {
+	p1 := UserProfile{Id: knownUserId}
+	if err := storage.LoadFields(context.Background(), &p1); err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("Found %d shared profiles (%d named) of which %d had elevenlabs keys", total, named, settings)
+	bytes, err := json.Marshal(p1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p2 UserProfile
+	if err := json.Unmarshal(bytes, &p2); err != nil {
+		t.Fatal(err)
+	}
+	if diff := deep.Equal(p1, p2); diff != nil {
+		t.Error(diff)
+	}
+}
+
+func TestTransferProfileData(t *testing.T) {
+	p1 := UserProfile{Id: knownUserId}
+	if err := storage.LoadFields(context.Background(), &p1); err != nil {
+		t.Fatal(err)
+	}
+	if p1.Name != knownUserName {
+		t.Errorf("p1.Name (%s) != knownUserName (%s)", p1.Name, knownUserName)
+	}
+	p2 := p1
+	if id, err := uuid.NewRandom(); err != nil {
+		t.Fatal(err)
+	} else {
+		p2.Id = strings.ToUpper(id.String())
+	}
+	if err := storage.SaveFields(context.Background(), &p2); err != nil {
+		t.Fatal(err)
+	}
+	p3 := UserProfile{Id: p2.Id}
+	if err := storage.LoadFields(context.Background(), &p3); err != nil {
+		t.Fatal(err)
+	}
+	p3.Id = p1.Id
+	if diff := deep.Equal(p1, p3); diff != nil {
+		t.Error(diff)
+	}
+	if err := storage.DeleteStorage(context.Background(), &p2); err != nil {
+		t.Fatalf("Failed to delete transfered profile")
+	}
 }

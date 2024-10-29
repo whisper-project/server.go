@@ -19,7 +19,7 @@ func TestGetDb(t *testing.T) {
 
 func TestGetMultiDifferentDbs(t *testing.T) {
 	dbT, prefixT := GetDb()
-	t.Logf("Initial test database is: %v, %q", dbT, prefixT)
+	// t.Logf("Initial test database is: %v, %q", dbT, prefixT)
 	if err := PushConfig("development"); err != nil {
 		t.Fatalf("failed to push development config: %v", err)
 	}
@@ -30,7 +30,7 @@ func TestGetMultiDifferentDbs(t *testing.T) {
 	if dbD == nil || prefixD != "d:" {
 		t.Fatalf("GetDb didn't return dev db after push: %v, %q", dbD, prefixD)
 	} else {
-		t.Logf("Pushed dev database is: %v, %q", dbD, prefixD)
+		// t.Logf("Pushed dev database is: %v, %q", dbD, prefixD)
 	}
 	if err := PushConfig("staging"); err != nil {
 		t.Fatalf("failed to push staging config: %v", err)
@@ -42,7 +42,7 @@ func TestGetMultiDifferentDbs(t *testing.T) {
 	if dbS == nil || prefixS != "s:" {
 		t.Fatalf("GetDb didn't return staging db after push: %v, %q", dbS, prefixS)
 	} else {
-		t.Logf("Pushed staging database is: %v, %q", dbS, prefixS)
+		// t.Logf("Pushed staging database is: %v, %q", dbS, prefixS)
 	}
 	PopConfig()
 	dbD2, prefixD2 := GetDb()
@@ -62,7 +62,7 @@ func TestGetMultiDifferentDbs(t *testing.T) {
 	if dbP == nil || prefixP != "p:" {
 		t.Fatalf("GetDb didn't return prod db after push: %v, %q", dbP, prefixP)
 	} else {
-		t.Logf("Pushed prod database is: %v, %q", dbP, prefixP)
+		// t.Logf("Pushed prod database is: %v, %q", dbP, prefixP)
 	}
 	PopConfig()
 	dbD3, prefixD3 := GetDb()

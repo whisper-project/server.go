@@ -8,6 +8,9 @@ package profile
 
 import (
 	"encoding/json"
+	"fmt"
+
+	"clickonetwo.io/whisper/internal/storage"
 )
 
 type UserProfile struct {
@@ -24,6 +27,41 @@ type UserProfile struct {
 	SettingsProfile    AppSettings    `redis:"settingsProfile" json:"settingsProfile"`
 	FavoritesTimestamp string         `redis:"favoritesTimestamp" json:"favoritesTimestamp"`
 	FavoritesProfile   AppFavorites   `redis:"favoritesProfile" json:"favoritesProfile"`
+}
+
+func (p *UserProfile) StoragePrefix() string {
+	return "pro:"
+}
+
+func (p *UserProfile) StorageId() string {
+	if p == nil {
+		return ""
+	}
+	return p.Id
+}
+
+func (p *UserProfile) SetStorageId(id string) error {
+	if p == nil {
+		return fmt.Errorf("can't set storage id of nil struct")
+	}
+	p.Id = id
+	return nil
+}
+
+func (p *UserProfile) Copy() any {
+	if p == nil {
+		return nil
+	}
+	n := new(UserProfile)
+	*n = *p
+	return any(n)
+}
+
+func (c UserProfile) Downgrade(in any) (storage.StorableStruct, error) {
+	if o, ok := in.(UserProfile); ok {
+		return &o, nil
+	}
+	return nil, fmt.Errorf("not a profile.UserProfile: %#v", in)
 }
 
 type WhisperProfile struct {
@@ -53,6 +91,10 @@ func (w *WhisperProfile) UnmarshalText(data []byte) error {
 	return nil
 }
 
+func (w *WhisperProfile) UnmarshalJSON(data []byte) error {
+	return w.UnmarshalText(data)
+}
+
 type ListenProfile struct {
 	Id        string                  `json:"id"`
 	Timestamp int64                   `json:"timestamp"`
@@ -78,6 +120,10 @@ func (l *ListenProfile) UnmarshalText(data []byte) error {
 	}
 	*l = ListenProfile(ul)
 	return nil
+}
+
+func (l *ListenProfile) UnmarshalJSON(data []byte) error {
+	return l.UnmarshalText(data)
 }
 
 type AppSettings struct {
@@ -123,6 +169,17 @@ func (s *AppSettings) UnmarshalText(text []byte) error {
 	return nil
 }
 
+type ExpandedAppSettings AppSettings
+
+func (s *AppSettings) UnmarshalJSON(data []byte) error {
+	var e ExpandedAppSettings
+	if err := json.Unmarshal(data, &e); err != nil {
+		return err
+	}
+	*s = AppSettings(e)
+	return nil
+}
+
 type AppFavorites struct {
 	Id         string              `json:"id"`
 	Timestamp  int64               `json:"timestamp"`
@@ -151,30 +208,6 @@ func (f *AppFavorites) UnmarshalText(text []byte) error {
 	return nil
 }
 
-func (p UserProfile) StoragePrefix() string {
-	return "pro:"
-}
-
-func (p UserProfile) StorageId() string {
-	return p.Id
-}
-
-type List string
-
-func (pcl List) StoragePrefix() string {
-	return "pro-list:"
-}
-
-func (pcl List) StorageId() string {
-	return string(pcl)
-}
-
-type Clients string
-
-func (pcl Clients) StoragePrefix() string {
-	return "pro-clients:"
-}
-
-func (pcl Clients) StorageId() string {
-	return string(pcl)
+func (f *AppFavorites) UnmarshalJSON(data []byte) error {
+	return f.UnmarshalText(data)
 }

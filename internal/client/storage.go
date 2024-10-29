@@ -6,25 +6,57 @@
 
 package client
 
+import (
+	"fmt"
+
+	"clickonetwo.io/whisper/internal/storage"
+)
+
 type Data struct {
-	Id                string `redis:"id"`
-	DeviceId          string `redis:"deviceId"`
-	Token             string `redis:"token"`
-	LastSecret        string `redis:"lastSecret"`
-	Secret            string `redis:"secret"`
-	SecretDate        int64  `redis:"secretDate"`
-	PushId            string `redis:"pushId"`
-	AppInfo           string `redis:"appInfo"`
-	UserName          string `redis:"userName"`
-	ProfileId         string `redis:"profileId"`
-	LastLaunch        int64  `redis:"lastLaunch"`
-	IsPresenceLogging int64  `redis:"isPresenceLogging"`
+	Id         string `redis:"id"`
+	DeviceId   string `redis:"deviceId"`
+	Token      string `redis:"token"`
+	LastSecret string `redis:"lastSecret"`
+	Secret     string `redis:"secret"`
+	SecretDate int64  `redis:"secretDate"`
+	PushId     string `redis:"pushId"`
+	AppInfo    string `redis:"appInfo"`
+	UserName   string `redis:"userName"`
+	ProfileId  string `redis:"profileId"`
+	LastLaunch int64  `redis:"lastLaunch"`
 }
 
-func (data Data) StoragePrefix() string {
+func (d *Data) StoragePrefix() string {
 	return "cli:"
 }
 
-func (data Data) StorageId() string {
-	return data.Id
+func (d *Data) StorageId() string {
+	if d == nil {
+		return ""
+	}
+	return d.Id
+}
+
+func (d *Data) SetStorageId(id string) error {
+	if d == nil {
+		return fmt.Errorf("can't set storage id of nil struct")
+	}
+	d.Id = id
+	return nil
+}
+
+func (d *Data) Copy() any {
+	if d == nil {
+		return nil
+	}
+	n := new(Data)
+	*n = *d
+	return any(n)
+}
+
+func (d Data) Downgrade(in any) (storage.StorableStruct, error) {
+	if o, ok := in.(Data); ok {
+		return &o, nil
+	}
+	return nil, fmt.Errorf("not a client.Data: %#v", in)
 }

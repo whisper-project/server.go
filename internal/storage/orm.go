@@ -19,12 +19,12 @@ type Storable interface {
 	StorageId() string
 }
 
-func DeleteStorage[T Storable](ctx context.Context, obj *T) error {
-	if obj == nil {
-		return fmt.Errorf("storable pointer is nil")
+func DeleteStorage[T Storable](ctx context.Context, obj T) error {
+	if obj.StorageId() == "" {
+		return fmt.Errorf("storable has no ID")
 	}
 	db, prefix := GetDb()
-	key := prefix + (*obj).StoragePrefix() + (*obj).StorageId()
+	key := prefix + obj.StoragePrefix() + obj.StorageId()
 	res := db.Del(ctx, key)
 	if err := res.Err(); err != nil {
 		return err
@@ -34,14 +34,20 @@ func DeleteStorage[T Storable](ctx context.Context, obj *T) error {
 
 type StorableStruct interface {
 	Storable
+	SetStorageId(id string) error
+	Copy() any
 }
 
-func LoadFields[T StorableStruct](ctx context.Context, obj *T) error {
-	if obj == nil {
-		return fmt.Errorf("StorableStruct pointer is nil")
+type StorableStructDowngrader interface {
+	Downgrade(any) (StorableStruct, error)
+}
+
+func LoadFields[T StorableStruct](ctx context.Context, obj T) error {
+	if obj.StorageId() == "" {
+		return fmt.Errorf("storable has no ID")
 	}
 	db, prefix := GetDb()
-	key := prefix + (*obj).StoragePrefix() + (*obj).StorageId()
+	key := prefix + obj.StoragePrefix() + obj.StorageId()
 	res := db.HGetAll(ctx, key)
 	if err := res.Err(); err != nil {
 		return fmt.Errorf("failed to fetch fields of stored object %s: %v", key, err)
@@ -55,12 +61,12 @@ func LoadFields[T StorableStruct](ctx context.Context, obj *T) error {
 	return nil
 }
 
-func SaveFields[T StorableStruct](ctx context.Context, obj *T) error {
-	if obj == nil {
-		return fmt.Errorf("StorableStruct pointer is nil")
+func SaveFields[T StorableStruct](ctx context.Context, obj T) error {
+	if obj.StorageId() == "" {
+		return fmt.Errorf("storable has no ID")
 	}
 	db, prefix := GetDb()
-	key := prefix + (*obj).StoragePrefix() + (*obj).StorageId()
+	key := prefix + obj.StoragePrefix() + obj.StorageId()
 	res := db.HSet(ctx, key, obj)
 	if err := res.Err(); err != nil {
 		return err
@@ -68,20 +74,17 @@ func SaveFields[T StorableStruct](ctx context.Context, obj *T) error {
 	return nil
 }
 
-func MapFields[T StorableStruct](ctx context.Context, f func(), obj *T) error {
-	if obj == nil {
-		return fmt.Errorf("StorableStruct pointer is nil")
+func MapFields[T StorableStruct](ctx context.Context, f func(), obj T) error {
+	if err := obj.SetStorageId(""); err != nil {
+		return fmt.Errorf("storable ID cannot be set")
 	}
 	db, prefix := GetDb()
-	iter := db.Scan(ctx, 0, prefix+(*obj).StoragePrefix()+"*", 20).Iterator()
+	iter := db.Scan(ctx, 0, prefix+obj.StoragePrefix()+"*", 20).Iterator()
 	for iter.Next(ctx) {
 		key := iter.Val()
 		res := db.HGetAll(ctx, key)
 		if err := res.Err(); err != nil {
 			return fmt.Errorf("failed to fetch fields of stored object %s: %v", key, err)
-		}
-		if len(res.Val()) == 0 {
-			return fmt.Errorf("stored object %s has no fields", key)
 		}
 		if err := res.Scan(obj); err != nil {
 			return fmt.Errorf("stored object %s cannot be read: %v", key, err)
@@ -100,6 +103,9 @@ type StorableSet interface {
 }
 
 func FetchMembers[T StorableSet](ctx context.Context, obj T) ([]string, error) {
+	if obj.StorageId() == "" {
+		return nil, fmt.Errorf("storable has no ID")
+	}
 	db, prefix := GetDb()
 	key := prefix + obj.StoragePrefix() + obj.StorageId()
 	res := db.SMembers(ctx, key)
@@ -110,6 +116,9 @@ func FetchMembers[T StorableSet](ctx context.Context, obj T) ([]string, error) {
 }
 
 func AddMembers[T StorableSet](ctx context.Context, obj T, members ...string) error {
+	if obj.StorageId() == "" {
+		return fmt.Errorf("storable has no ID")
+	}
 	if len(members) == 0 {
 		// nothing to add
 		return nil
@@ -128,6 +137,9 @@ func AddMembers[T StorableSet](ctx context.Context, obj T, members ...string) er
 }
 
 func RemoveMembers[T StorableSet](ctx context.Context, obj T, members ...string) error {
+	if obj.StorageId() == "" {
+		return fmt.Errorf("storable has no ID")
+	}
 	if len(members) == 0 {
 		// nothing to delete
 		return nil
@@ -151,6 +163,9 @@ type StorableList interface {
 }
 
 func FetchRange[T StorableList](ctx context.Context, obj T, start int64, end int64) ([]string, error) {
+	if obj.StorageId() == "" {
+		return nil, fmt.Errorf("storable has no ID")
+	}
 	db, prefix := GetDb()
 	key := prefix + obj.StoragePrefix() + obj.StorageId()
 	res := db.LRange(ctx, key, start, end)
@@ -161,6 +176,9 @@ func FetchRange[T StorableList](ctx context.Context, obj T, start int64, end int
 }
 
 func FetchOneBlocking[T StorableList](ctx context.Context, obj T, timeout time.Duration) (string, error) {
+	if obj.StorageId() == "" {
+		return "", fmt.Errorf("storable has no ID")
+	}
 	db, prefix := GetDb()
 	key := prefix + obj.StoragePrefix() + obj.StorageId()
 	res := db.BLMove(ctx, key, key, "right", "left", timeout)
@@ -171,6 +189,9 @@ func FetchOneBlocking[T StorableList](ctx context.Context, obj T, timeout time.D
 }
 
 func PushRange[T StorableList](ctx context.Context, obj T, onLeft bool, members ...string) error {
+	if obj.StorageId() == "" {
+		return fmt.Errorf("storable has no ID")
+	}
 	db, prefix := GetDb()
 	key := prefix + obj.StoragePrefix() + obj.StorageId()
 	args := make([]interface{}, len(members))
@@ -190,6 +211,9 @@ func PushRange[T StorableList](ctx context.Context, obj T, onLeft bool, members 
 }
 
 func RemoveElement[T StorableList](ctx context.Context, obj T, count int64, element string) error {
+	if obj.StorageId() == "" {
+		return fmt.Errorf("storable has no ID")
+	}
 	db, prefix := GetDb()
 	key := prefix + obj.StoragePrefix() + obj.StorageId()
 	res := db.LRem(ctx, key, count, any(element))
