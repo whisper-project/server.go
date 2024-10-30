@@ -25,14 +25,42 @@ var (
 	knownStateId          = "d7dfb2b5-f25a-4de7-8c4a-52af08f1e7f3"
 )
 
-func TestConversationNilStorable(t *testing.T) {
-	var c *Data
-	var s *State
+func TestConversationStorableInterfaces(t *testing.T) {
+	var c *Data = nil
+	if c.StoragePrefix() != "con:" {
+		t.Errorf("Conversations have a non-'con:' prefix: %s", c.StoragePrefix())
+	}
 	if c.StorageId() != "" {
 		t.Errorf("nil Data.StorageId() should return empty string")
 	}
-	if s.StorageId() != "" {
-		t.Errorf("nil State.StorageId() should return empty string")
+	if err := c.SetStorageId("test"); err == nil {
+		t.Errorf("nil Data.SetStorageId() should error out")
+	}
+	if dup := c.Copy(); dup != nil {
+		t.Errorf("nil Data.Copy() should return nil")
+	}
+
+	c = &Data{Id: "before"}
+	if c.StorageId() != "before" {
+		t.Errorf("StorageId is wrong: %s != %s", c.StorageId(), "before")
+	}
+	if err := c.SetStorageId("after"); err != nil {
+		t.Errorf("Failed to set storage id: %v", err)
+	}
+	if c.StorageId() != "after" {
+		t.Errorf("StorageId is wrong: %s != %s", c.StorageId(), "after")
+	}
+	dup := c.Copy()
+	if diff := deep.Equal(dup, c); diff != nil {
+		t.Error(diff)
+	}
+	if dg, err := (*c).Downgrade(any(*c)); err != nil {
+		t.Error(err)
+	} else if diff := deep.Equal(dg, c); diff != nil {
+		t.Error(diff)
+	}
+	if _, err := (*c).Downgrade(any(nil)); err == nil {
+		t.Errorf("Data.Downgrade(nil) should error out")
 	}
 }
 
@@ -81,6 +109,45 @@ func TestTransferConversationData(t *testing.T) {
 	}
 	if err := storage.DeleteStorage(context.Background(), &c2); err != nil {
 		t.Fatalf("Failed to delete transfered conversation")
+	}
+}
+
+func TestStateStorableInterfaces(t *testing.T) {
+	var s *State = nil
+	if s.StoragePrefix() != "tra:" {
+		t.Errorf("States have a non-'tra:' prefix: %s", s.StoragePrefix())
+	}
+	if s.StorageId() != "" {
+		t.Errorf("nil State.StorageId() should return empty string")
+	}
+	if err := s.SetStorageId("test"); err == nil {
+		t.Errorf("nil State.SetStorageId() should error out")
+	}
+	if dup := s.Copy(); dup != nil {
+		t.Errorf("nil State.Copy() should return nil")
+	}
+
+	s = &State{Id: "before"}
+	if s.StorageId() != "before" {
+		t.Errorf("StorageId is wrong: %s != %s", s.StorageId(), "before")
+	}
+	if err := s.SetStorageId("after"); err != nil {
+		t.Errorf("Failed to set storage id: %v", err)
+	}
+	if s.StorageId() != "after" {
+		t.Errorf("StorageId is wrong: %s != %s", s.StorageId(), "after")
+	}
+	dup := s.Copy()
+	if diff := deep.Equal(dup, s); diff != nil {
+		t.Error(diff)
+	}
+	if dg, err := (*s).Downgrade(any(*s)); err != nil {
+		t.Error(err)
+	} else if diff := deep.Equal(dg, s); diff != nil {
+		t.Error(diff)
+	}
+	if _, err := (*s).Downgrade(any(nil)); err == nil {
+		t.Errorf("State.Downgrade(nil) should error out")
 	}
 }
 

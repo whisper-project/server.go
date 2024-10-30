@@ -24,6 +24,45 @@ var (
 	knownClientUserName = "Dan Brotsky"
 )
 
+func TestClientStorableInterfaces(t *testing.T) {
+	var c *Data = nil
+	if c.StoragePrefix() != "cli:" {
+		t.Errorf("Clients have a non-'cli:' prefix: %s", c.StoragePrefix())
+	}
+	if c.StorageId() != "" {
+		t.Errorf("nil Data.StorageId() should return empty string")
+	}
+	if err := c.SetStorageId("test"); err == nil {
+		t.Errorf("nil Data.SetStorageId() should error out")
+	}
+	if dup := c.Copy(); dup != nil {
+		t.Errorf("nil Data.Copy() should return nil")
+	}
+
+	c = &Data{Id: "before"}
+	if c.StorageId() != "before" {
+		t.Errorf("StorageId is wrong: %s != %s", c.StorageId(), "before")
+	}
+	if err := c.SetStorageId("after"); err != nil {
+		t.Errorf("Failed to set storage id: %v", err)
+	}
+	if c.StorageId() != "after" {
+		t.Errorf("StorageId is wrong: %s != %s", c.StorageId(), "after")
+	}
+	dup := c.Copy()
+	if diff := deep.Equal(dup, c); diff != nil {
+		t.Error(diff)
+	}
+	if dg, err := (*c).Downgrade(any(*c)); err != nil {
+		t.Error(err)
+	} else if diff := deep.Equal(dg, c); diff != nil {
+		t.Error(diff)
+	}
+	if _, err := (*c).Downgrade(any(nil)); err == nil {
+		t.Errorf("Data.Downgrade(nil) should error out")
+	}
+}
+
 func TestClientJsonMarshaling(t *testing.T) {
 	c1 := Data{Id: knownClientId}
 	if err := storage.LoadFields(context.Background(), &c1); err != nil {

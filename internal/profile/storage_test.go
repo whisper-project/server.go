@@ -23,6 +23,45 @@ var (
 	knownUserName = "Dan Brotsky"
 )
 
+func TestUserProfileStorableInterfaces(t *testing.T) {
+	var p *UserProfile = nil
+	if p.StoragePrefix() != "pro:" {
+		t.Errorf("UserProfiles have a non-'pro:' prefix: %s", p.StoragePrefix())
+	}
+	if p.StorageId() != "" {
+		t.Errorf("nil UserProfile.StorageId() should return empty string")
+	}
+	if err := p.SetStorageId("test"); err == nil {
+		t.Errorf("nil UserProfile.SetStorageId() should error out")
+	}
+	if dup := p.Copy(); dup != nil {
+		t.Errorf("nil UserProfile.Copy() should return nil")
+	}
+
+	p = &UserProfile{Id: "before"}
+	if p.StorageId() != "before" {
+		t.Errorf("StorageId is wrong: %s != %s", p.StorageId(), "before")
+	}
+	if err := p.SetStorageId("after"); err != nil {
+		t.Errorf("Failed to set storage id: %v", err)
+	}
+	if p.StorageId() != "after" {
+		t.Errorf("StorageId is wrong: %s != %s", p.StorageId(), "after")
+	}
+	dup := p.Copy()
+	if diff := deep.Equal(dup, p); diff != nil {
+		t.Error(diff)
+	}
+	if dg, err := (*p).Downgrade(any(*p)); err != nil {
+		t.Error(err)
+	} else if diff := deep.Equal(dg, p); diff != nil {
+		t.Error(diff)
+	}
+	if _, err := (*p).Downgrade(any(nil)); err == nil {
+		t.Errorf("UserProfile.Downgrade(nil) should error out")
+	}
+}
+
 func TestWhisperProfileJsonMarshaling(t *testing.T) {
 	p1 := UserProfile{Id: knownUserId}
 	if err := storage.LoadFields(context.Background(), &p1); err != nil {

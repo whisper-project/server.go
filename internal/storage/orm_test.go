@@ -67,11 +67,11 @@ func TestNilOrmTester(t *testing.T) {
 	if err := SaveFields(context.Background(), data); err == nil {
 		t.Errorf("SaveFields on nil pointer didn't fail!")
 	}
-	if err := DeleteStorage(context.Background(), data); err == nil {
-		t.Errorf("DeleteStorage on nil pointer didn't fail!")
-	}
 	if err := MapFields(context.Background(), func() {}, data); err == nil {
 		t.Errorf("MapFields on nil pointer didn't fail!")
+	}
+	if err := DeleteStorage(context.Background(), data); err == nil {
+		t.Errorf("DeleteStorage on nil pointer didn't fail!")
 	}
 }
 

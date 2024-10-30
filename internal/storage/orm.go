@@ -103,9 +103,6 @@ type StorableSet interface {
 }
 
 func FetchMembers[T StorableSet](ctx context.Context, obj T) ([]string, error) {
-	if obj.StorageId() == "" {
-		return nil, fmt.Errorf("storable has no ID")
-	}
 	db, prefix := GetDb()
 	key := prefix + obj.StoragePrefix() + obj.StorageId()
 	res := db.SMembers(ctx, key)
@@ -116,9 +113,6 @@ func FetchMembers[T StorableSet](ctx context.Context, obj T) ([]string, error) {
 }
 
 func AddMembers[T StorableSet](ctx context.Context, obj T, members ...string) error {
-	if obj.StorageId() == "" {
-		return fmt.Errorf("storable has no ID")
-	}
 	if len(members) == 0 {
 		// nothing to add
 		return nil
@@ -137,9 +131,6 @@ func AddMembers[T StorableSet](ctx context.Context, obj T, members ...string) er
 }
 
 func RemoveMembers[T StorableSet](ctx context.Context, obj T, members ...string) error {
-	if obj.StorageId() == "" {
-		return fmt.Errorf("storable has no ID")
-	}
 	if len(members) == 0 {
 		// nothing to delete
 		return nil
@@ -163,9 +154,6 @@ type StorableList interface {
 }
 
 func FetchRange[T StorableList](ctx context.Context, obj T, start int64, end int64) ([]string, error) {
-	if obj.StorageId() == "" {
-		return nil, fmt.Errorf("storable has no ID")
-	}
 	db, prefix := GetDb()
 	key := prefix + obj.StoragePrefix() + obj.StorageId()
 	res := db.LRange(ctx, key, start, end)
@@ -176,9 +164,6 @@ func FetchRange[T StorableList](ctx context.Context, obj T, start int64, end int
 }
 
 func FetchOneBlocking[T StorableList](ctx context.Context, obj T, timeout time.Duration) (string, error) {
-	if obj.StorageId() == "" {
-		return "", fmt.Errorf("storable has no ID")
-	}
 	db, prefix := GetDb()
 	key := prefix + obj.StoragePrefix() + obj.StorageId()
 	res := db.BLMove(ctx, key, key, "right", "left", timeout)
@@ -189,9 +174,6 @@ func FetchOneBlocking[T StorableList](ctx context.Context, obj T, timeout time.D
 }
 
 func PushRange[T StorableList](ctx context.Context, obj T, onLeft bool, members ...string) error {
-	if obj.StorageId() == "" {
-		return fmt.Errorf("storable has no ID")
-	}
 	db, prefix := GetDb()
 	key := prefix + obj.StoragePrefix() + obj.StorageId()
 	args := make([]interface{}, len(members))
@@ -211,9 +193,6 @@ func PushRange[T StorableList](ctx context.Context, obj T, onLeft bool, members 
 }
 
 func RemoveElement[T StorableList](ctx context.Context, obj T, count int64, element string) error {
-	if obj.StorageId() == "" {
-		return fmt.Errorf("storable has no ID")
-	}
 	db, prefix := GetDb()
 	key := prefix + obj.StoragePrefix() + obj.StorageId()
 	res := db.LRem(ctx, key, count, any(element))
