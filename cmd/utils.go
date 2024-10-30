@@ -46,7 +46,7 @@ func SaveObjects(what ObjectMap) {
 	}
 }
 
-func saveObjects[T storage.StorableStructDowngrader](name string, oa []any, e T) int {
+func saveObjects[T storage.Struct](name string, oa []any, e T) int {
 	var saved int
 	if len(oa) >= 10 {
 		_, _ = fmt.Fprintf(os.Stderr, "Starting to save %s...", name)
@@ -76,8 +76,8 @@ func saveObjects[T storage.StorableStructDowngrader](name string, oa []any, e T)
 
 type ObjectMap map[string][]any
 
-// DumpObjects serializes the entire map to the given filepath
-func DumpObjects(what ObjectMap, where string) {
+// DumpObjectsToPath serializes the entire map to the given filepath
+func DumpObjectsToPath(what ObjectMap, where string) {
 	var stream io.Writer
 	if where == "-" {
 		stream = os.Stdout
@@ -92,19 +92,24 @@ func DumpObjects(what ObjectMap, where string) {
 		defer file.Close()
 		stream = file
 	}
+	DumpObjectsToStream(stream, what)
+	if where != "-" {
+		fmt.Printf("Objects dumped to %q\n", where)
+	}
+}
+
+// DumpObjectsToStream marshals the objects as JSON to the given stream
+func DumpObjectsToStream(stream io.Writer, what ObjectMap) {
 	encoder := json.NewEncoder(stream)
 	encoder.SetIndent("", "  ")
 	encoder.SetEscapeHTML(false)
 	if err := encoder.Encode(what); err != nil {
 		panic(err)
 	}
-	if where != "-" {
-		fmt.Printf("Objects dumped to %q\n", where)
-	}
 }
 
-// LoadObjects loads the objects dumped to the given filepath
-func LoadObjects(where string) ObjectMap {
+// LoadObjectsFromPath loads the objects dumped to the given filepath
+func LoadObjectsFromPath(where string) ObjectMap {
 	var stream io.Reader
 	if where == "-" {
 		stream = os.Stdin
@@ -119,6 +124,11 @@ func LoadObjects(where string) ObjectMap {
 		defer file.Close()
 		stream = file
 	}
+	return LoadObjectsFromStream(stream)
+}
+
+// LoadObjectsFromStream creates objects from a stream containing a JSON-serialized object map
+func LoadObjectsFromStream(stream io.Reader) ObjectMap {
 	decoder := json.NewDecoder(stream)
 	m := make(map[string][]json.RawMessage)
 	if err := decoder.Decode(&m); err != nil {

@@ -32,17 +32,17 @@ func DeleteStorage[T Storable](ctx context.Context, obj T) error {
 	return nil
 }
 
-type StorableStruct interface {
+type StructPointer interface {
 	Storable
 	SetStorageId(id string) error
 	Copy() any
 }
 
-type StorableStructDowngrader interface {
-	Downgrade(any) (StorableStruct, error)
+type Struct interface {
+	Downgrade(any) (StructPointer, error)
 }
 
-func LoadFields[T StorableStruct](ctx context.Context, obj T) error {
+func LoadFields[T StructPointer](ctx context.Context, obj T) error {
 	if obj.StorageId() == "" {
 		return fmt.Errorf("storable has no ID")
 	}
@@ -61,7 +61,7 @@ func LoadFields[T StorableStruct](ctx context.Context, obj T) error {
 	return nil
 }
 
-func SaveFields[T StorableStruct](ctx context.Context, obj T) error {
+func SaveFields[T StructPointer](ctx context.Context, obj T) error {
 	if obj.StorageId() == "" {
 		return fmt.Errorf("storable has no ID")
 	}
@@ -74,7 +74,7 @@ func SaveFields[T StorableStruct](ctx context.Context, obj T) error {
 	return nil
 }
 
-func MapFields[T StorableStruct](ctx context.Context, f func(), obj T) error {
+func MapFields[T StructPointer](ctx context.Context, f func(), obj T) error {
 	if err := obj.SetStorageId(""); err != nil {
 		return fmt.Errorf("storable ID cannot be set")
 	}
@@ -97,12 +97,12 @@ func MapFields[T StorableStruct](ctx context.Context, f func(), obj T) error {
 	return nil
 }
 
-type StorableSet interface {
+type Set interface {
 	~string
 	Storable
 }
 
-func FetchMembers[T StorableSet](ctx context.Context, obj T) ([]string, error) {
+func FetchMembers[T Set](ctx context.Context, obj T) ([]string, error) {
 	db, prefix := GetDb()
 	key := prefix + obj.StoragePrefix() + obj.StorageId()
 	res := db.SMembers(ctx, key)
@@ -112,7 +112,7 @@ func FetchMembers[T StorableSet](ctx context.Context, obj T) ([]string, error) {
 	return res.Val(), nil
 }
 
-func AddMembers[T StorableSet](ctx context.Context, obj T, members ...string) error {
+func AddMembers[T Set](ctx context.Context, obj T, members ...string) error {
 	if len(members) == 0 {
 		// nothing to add
 		return nil
@@ -130,7 +130,7 @@ func AddMembers[T StorableSet](ctx context.Context, obj T, members ...string) er
 	return nil
 }
 
-func RemoveMembers[T StorableSet](ctx context.Context, obj T, members ...string) error {
+func RemoveMembers[T Set](ctx context.Context, obj T, members ...string) error {
 	if len(members) == 0 {
 		// nothing to delete
 		return nil
@@ -148,12 +148,12 @@ func RemoveMembers[T StorableSet](ctx context.Context, obj T, members ...string)
 	return nil
 }
 
-type StorableList interface {
+type List interface {
 	Storable
 	~string
 }
 
-func FetchRange[T StorableList](ctx context.Context, obj T, start int64, end int64) ([]string, error) {
+func FetchRange[T List](ctx context.Context, obj T, start int64, end int64) ([]string, error) {
 	db, prefix := GetDb()
 	key := prefix + obj.StoragePrefix() + obj.StorageId()
 	res := db.LRange(ctx, key, start, end)
@@ -163,7 +163,7 @@ func FetchRange[T StorableList](ctx context.Context, obj T, start int64, end int
 	return res.Val(), nil
 }
 
-func FetchOneBlocking[T StorableList](ctx context.Context, obj T, timeout time.Duration) (string, error) {
+func FetchOneBlocking[T List](ctx context.Context, obj T, timeout time.Duration) (string, error) {
 	db, prefix := GetDb()
 	key := prefix + obj.StoragePrefix() + obj.StorageId()
 	res := db.BLMove(ctx, key, key, "right", "left", timeout)
@@ -173,7 +173,7 @@ func FetchOneBlocking[T StorableList](ctx context.Context, obj T, timeout time.D
 	return res.Val(), nil
 }
 
-func PushRange[T StorableList](ctx context.Context, obj T, onLeft bool, members ...string) error {
+func PushRange[T List](ctx context.Context, obj T, onLeft bool, members ...string) error {
 	db, prefix := GetDb()
 	key := prefix + obj.StoragePrefix() + obj.StorageId()
 	args := make([]interface{}, len(members))
@@ -192,7 +192,7 @@ func PushRange[T StorableList](ctx context.Context, obj T, onLeft bool, members 
 	return nil
 }
 
-func RemoveElement[T StorableList](ctx context.Context, obj T, count int64, element string) error {
+func RemoveElement[T List](ctx context.Context, obj T, count int64, element string) error {
 	db, prefix := GetDb()
 	key := prefix + obj.StoragePrefix() + obj.StorageId()
 	res := db.LRem(ctx, key, count, any(element))

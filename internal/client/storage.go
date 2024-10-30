@@ -54,7 +54,7 @@ func (d *Data) Copy() any {
 	return any(n)
 }
 
-func (d Data) Downgrade(in any) (storage.StorableStruct, error) {
+func (d Data) Downgrade(in any) (storage.StructPointer, error) {
 	if o, ok := in.(Data); ok {
 		return &o, nil
 	}

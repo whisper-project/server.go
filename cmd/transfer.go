@@ -93,7 +93,7 @@ When transferring specific objects, you can also dump their JSON to an output fi
 				}
 			}
 		} else {
-			om = LoadObjects(load)
+			om = LoadObjectsFromPath(load)
 		}
 		if to != "" {
 			if err := storage.PushConfig(to); err != nil {
@@ -102,7 +102,7 @@ When transferring specific objects, you can also dump their JSON to an output fi
 			defer storage.PopConfig()
 			SaveObjects(om)
 		} else {
-			DumpObjects(om, dump)
+			DumpObjectsToPath(om, dump)
 		}
 	},
 }
@@ -139,7 +139,7 @@ func collectAll() ObjectMap {
 	return om
 }
 
-func collectObjectsByType[T storage.StorableStruct](name string, o T) []any {
+func collectObjectsByType[T storage.StructPointer](name string, o T) []any {
 	collected := 0
 	var as []any
 	collect := func() {
@@ -156,7 +156,7 @@ func collectObjectsByType[T storage.StorableStruct](name string, o T) []any {
 	return as
 }
 
-func collectObjectsById[T storage.StorableStruct](name string, ids []string, o T) []any {
+func collectObjectsById[T storage.StructPointer](name string, ids []string, o T) []any {
 	singular := name[0 : len(name)-1]
 	if len(ids) >= 10 {
 		_, _ = fmt.Fprintf(os.Stderr, "Starting to collect %s...", name)

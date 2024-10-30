@@ -90,11 +90,7 @@ func TestTransferClientData(t *testing.T) {
 		t.Errorf("c1.UserName (%s) != knownClientUserName (%s)", c1.UserName, knownClientUserName)
 	}
 	c2 := c1
-	if id, err := uuid.NewRandom(); err != nil {
-		t.Fatal(err)
-	} else {
-		c2.Id = strings.ToUpper(id.String())
-	}
+	c2.Id = strings.ToUpper(uuid.NewString())
 	if err := storage.SaveFields(context.Background(), &c2); err != nil {
 		t.Fatal(err)
 	}

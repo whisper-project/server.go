@@ -52,7 +52,7 @@ func (data *OrmTestStruct) Copy() any {
 	return any(n)
 }
 
-func (data OrmTestStruct) Downgrade(in any) (StorableStruct, error) {
+func (data OrmTestStruct) Downgrade(in any) (StructPointer, error) {
 	if o, ok := in.(OrmTestStruct); ok {
 		return &o, nil
 	}

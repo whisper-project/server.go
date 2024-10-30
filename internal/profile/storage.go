@@ -57,7 +57,7 @@ func (p *UserProfile) Copy() any {
 	return any(n)
 }
 
-func (c UserProfile) Downgrade(in any) (storage.StorableStruct, error) {
+func (c UserProfile) Downgrade(in any) (storage.StructPointer, error) {
 	if o, ok := in.(UserProfile); ok {
 		return &o, nil
 	}
