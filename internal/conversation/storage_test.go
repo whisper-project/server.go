@@ -15,14 +15,8 @@ import (
 	"github.com/go-test/deep"
 	"github.com/google/uuid"
 
+	"clickonetwo.io/whisper/internal/internaltest"
 	"clickonetwo.io/whisper/internal/storage"
-)
-
-//goland:noinspection SpellCheckingInspection
-var (
-	knownConversationId   = "3C6CE484-4A73-4D06-A8B9-4FC8EF51F5BA"
-	knownConversationName = "Anyone"
-	knownStateId          = "d7dfb2b5-f25a-4de7-8c4a-52af08f1e7f3"
 )
 
 func TestConversationStorableInterfaces(t *testing.T) {
@@ -70,7 +64,7 @@ func TestConversationStorableInterfaces(t *testing.T) {
 }
 
 func TestConversationJsonMarshaling(t *testing.T) {
-	c1 := Data{Id: knownConversationId}
+	c1 := Data{Id: internaltest.KnownConversationId}
 	if err := storage.LoadFields(context.Background(), &c1); err != nil {
 		t.Fatal(err)
 	}
@@ -88,19 +82,15 @@ func TestConversationJsonMarshaling(t *testing.T) {
 }
 
 func TestTransferConversationData(t *testing.T) {
-	c1 := Data{Id: knownConversationId}
+	c1 := Data{Id: internaltest.KnownConversationId}
 	if err := storage.LoadFields(context.Background(), &c1); err != nil {
 		t.Fatal(err)
 	}
-	if c1.Name != knownConversationName {
-		t.Errorf("c1.Name (%s) != knownConversationName (%s)", c1.Name, knownConversationName)
+	if c1.Name != internaltest.KnownConversationName {
+		t.Errorf("c1.Name (%s) != internaltest.KnownConversationName (%s)", c1.Name, internaltest.KnownConversationName)
 	}
 	c2 := c1
-	if id, err := uuid.NewRandom(); err != nil {
-		t.Fatal(err)
-	} else {
-		c2.Id = strings.ToUpper(id.String())
-	}
+	c2.Id = internaltest.NewTestId()
 	if err := storage.SaveFields(context.Background(), &c2); err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +152,7 @@ func TestStateStorableInterfaces(t *testing.T) {
 }
 
 func TestStateJsonMarshaling(t *testing.T) {
-	s1 := State{Id: knownStateId}
+	s1 := State{Id: internaltest.KnownStateId}
 	if err := storage.LoadFields(context.Background(), &s1); err != nil {
 		t.Fatal(err)
 	}
@@ -180,12 +170,12 @@ func TestStateJsonMarshaling(t *testing.T) {
 }
 
 func TestTransferStateData(t *testing.T) {
-	s1 := State{Id: knownStateId}
+	s1 := State{Id: internaltest.KnownStateId}
 	if err := storage.LoadFields(context.Background(), &s1); err != nil {
 		t.Fatal(err)
 	}
-	if s1.ConversationId != knownConversationId {
-		t.Errorf("s1.ConversationId (%s) != knownConversationId (%s)", s1.ConversationId, knownConversationId)
+	if s1.ConversationId != internaltest.KnownConversationId {
+		t.Errorf("s1.ConversationId (%s) != internaltest.KnownConversationId (%s)", s1.ConversationId, internaltest.KnownConversationId)
 	}
 	s2 := s1
 	if id, err := uuid.NewRandom(); err != nil {

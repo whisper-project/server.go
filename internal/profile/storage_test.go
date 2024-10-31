@@ -9,18 +9,12 @@ package profile
 import (
 	"context"
 	"encoding/json"
-	"strings"
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/google/uuid"
 
+	"clickonetwo.io/whisper/internal/internaltest"
 	"clickonetwo.io/whisper/internal/storage"
-)
-
-var (
-	knownUserId   = "B11C1B3D-21E6-4766-B16B-4FDEED785139"
-	knownUserName = "Dan Brotsky"
 )
 
 func TestUserProfileStorableInterfaces(t *testing.T) {
@@ -68,7 +62,7 @@ func TestUserProfileStorableInterfaces(t *testing.T) {
 }
 
 func TestWhisperProfileJsonMarshaling(t *testing.T) {
-	p1 := UserProfile{Id: knownUserId}
+	p1 := UserProfile{Id: internaltest.KnownUserId}
 	if err := storage.LoadFields(context.Background(), &p1); err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +80,7 @@ func TestWhisperProfileJsonMarshaling(t *testing.T) {
 }
 
 func TestUserProfileJsonMarshaling(t *testing.T) {
-	p1 := UserProfile{Id: knownUserId}
+	p1 := UserProfile{Id: internaltest.KnownUserId}
 	if err := storage.LoadFields(context.Background(), &p1); err != nil {
 		t.Fatal(err)
 	}
@@ -104,19 +98,15 @@ func TestUserProfileJsonMarshaling(t *testing.T) {
 }
 
 func TestTransferProfileData(t *testing.T) {
-	p1 := UserProfile{Id: knownUserId}
+	p1 := UserProfile{Id: internaltest.KnownUserId}
 	if err := storage.LoadFields(context.Background(), &p1); err != nil {
 		t.Fatal(err)
 	}
-	if p1.Name != knownUserName {
-		t.Errorf("p1.Name (%s) != knownUserName (%s)", p1.Name, knownUserName)
+	if p1.Name != internaltest.KnownUserName {
+		t.Errorf("p1.Name (%s) != internaltest.KnownUserName (%s)", p1.Name, internaltest.KnownUserName)
 	}
 	p2 := p1
-	if id, err := uuid.NewRandom(); err != nil {
-		t.Fatal(err)
-	} else {
-		p2.Id = strings.ToUpper(id.String())
-	}
+	p2.Id = internaltest.NewTestId()
 	if err := storage.SaveFields(context.Background(), &p2); err != nil {
 		t.Fatal(err)
 	}

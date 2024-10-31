@@ -9,19 +9,12 @@ package client
 import (
 	"context"
 	"encoding/json"
-	"strings"
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/google/uuid"
 
+	"clickonetwo.io/whisper/internal/internaltest"
 	"clickonetwo.io/whisper/internal/storage"
-)
-
-//goland:noinspection SpellCheckingInspection
-var (
-	knownClientId       = "561E5E8E-EA35-405A-A256-69C74713FAFD"
-	knownClientUserName = "Dan Brotsky"
 )
 
 func TestClientStorableInterfaces(t *testing.T) {
@@ -69,7 +62,7 @@ func TestClientStorableInterfaces(t *testing.T) {
 }
 
 func TestClientJsonMarshaling(t *testing.T) {
-	c1 := Data{Id: knownClientId}
+	c1 := Data{Id: internaltest.KnownClientId}
 	if err := storage.LoadFields(context.Background(), &c1); err != nil {
 		t.Fatal(err)
 	}
@@ -87,15 +80,15 @@ func TestClientJsonMarshaling(t *testing.T) {
 }
 
 func TestTransferClientData(t *testing.T) {
-	c1 := Data{Id: knownClientId}
+	c1 := Data{Id: internaltest.KnownClientId}
 	if err := storage.LoadFields(context.Background(), &c1); err != nil {
 		t.Fatal(err)
 	}
-	if c1.UserName != knownClientUserName {
-		t.Errorf("c1.UserName (%s) != knownClientUserName (%s)", c1.UserName, knownClientUserName)
+	if c1.UserName != internaltest.KnownClientUserName {
+		t.Errorf("c1.UserName (%s) != internaltest.KnownClientUserName (%s)", c1.UserName, internaltest.KnownClientUserName)
 	}
 	c2 := c1
-	c2.Id = strings.ToUpper(uuid.NewString())
+	c2.Id = internaltest.NewTestId()
 	if err := storage.SaveFields(context.Background(), &c2); err != nil {
 		t.Fatal(err)
 	}
