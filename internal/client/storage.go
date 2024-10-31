@@ -45,18 +45,21 @@ func (d *Data) SetStorageId(id string) error {
 	return nil
 }
 
-func (d *Data) Copy() any {
+func (d *Data) Copy() storage.StructPointer {
 	if d == nil {
 		return nil
 	}
 	n := new(Data)
 	*n = *d
-	return any(n)
+	return n
 }
 
-func (d Data) Downgrade(in any) (storage.StructPointer, error) {
+func (d *Data) Downgrade(in any) (storage.StructPointer, error) {
 	if o, ok := in.(Data); ok {
 		return &o, nil
+	}
+	if o, ok := in.(*Data); ok {
+		return o, nil
 	}
 	return nil, fmt.Errorf("not a client.Data: %#v", in)
 }

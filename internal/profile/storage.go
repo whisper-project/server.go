@@ -48,18 +48,21 @@ func (p *UserProfile) SetStorageId(id string) error {
 	return nil
 }
 
-func (p *UserProfile) Copy() any {
+func (p *UserProfile) Copy() storage.StructPointer {
 	if p == nil {
 		return nil
 	}
 	n := new(UserProfile)
 	*n = *p
-	return any(n)
+	return n
 }
 
-func (c UserProfile) Downgrade(in any) (storage.StructPointer, error) {
+func (c *UserProfile) Downgrade(in any) (storage.StructPointer, error) {
 	if o, ok := in.(UserProfile); ok {
 		return &o, nil
+	}
+	if o, ok := in.(*UserProfile); ok {
+		return o, nil
 	}
 	return nil, fmt.Errorf("not a profile.UserProfile: %#v", in)
 }

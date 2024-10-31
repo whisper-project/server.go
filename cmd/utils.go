@@ -29,13 +29,13 @@ func SaveObjects(what ObjectMap) {
 		if len(as) > 0 {
 			switch t {
 			case "profiles":
-				saved += saveObjects(t, as, profile.UserProfile{})
+				saved += saveObjects(t, as, &profile.UserProfile{})
 			case "clients":
-				saved += saveObjects(t, as, client.Data{})
+				saved += saveObjects(t, as, &client.Data{})
 			case "conversations":
-				saved += saveObjects(t, as, conversation.Data{})
+				saved += saveObjects(t, as, &conversation.Data{})
 			case "states":
-				saved += saveObjects(t, as, conversation.State{})
+				saved += saveObjects(t, as, &conversation.State{})
 			default:
 				_, _ = fmt.Fprintf(os.Stderr, "Skipping objects of unknown type: %s", t)
 			}
@@ -46,7 +46,7 @@ func SaveObjects(what ObjectMap) {
 	}
 }
 
-func saveObjects[T storage.Struct](name string, oa []any, e T) int {
+func saveObjects[T storage.StructPointer](name string, oa []any, e T) int {
 	var saved int
 	if len(oa) >= 10 {
 		_, _ = fmt.Fprintf(os.Stderr, "Starting to save %s...", name)

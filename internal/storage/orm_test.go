@@ -43,18 +43,21 @@ func (data *OrmTestStruct) SetStorageId(id string) error {
 	return nil
 }
 
-func (data *OrmTestStruct) Copy() any {
+func (data *OrmTestStruct) Copy() StructPointer {
 	if data == nil {
 		return nil
 	}
 	n := new(OrmTestStruct)
 	*n = *data
-	return any(n)
+	return n
 }
 
-func (data OrmTestStruct) Downgrade(in any) (StructPointer, error) {
+func (data *OrmTestStruct) Downgrade(in any) (StructPointer, error) {
 	if o, ok := in.(OrmTestStruct); ok {
 		return &o, nil
+	}
+	if o, ok := in.(*OrmTestStruct); ok {
+		return o, nil
 	}
 	return nil, fmt.Errorf("not an OrmTestStruct: %#v", in)
 }

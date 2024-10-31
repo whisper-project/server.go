@@ -54,7 +54,12 @@ func TestConversationStorableInterfaces(t *testing.T) {
 	if diff := deep.Equal(dup, c); diff != nil {
 		t.Error(diff)
 	}
-	if dg, err := (*c).Downgrade(any(*c)); err != nil {
+	if dg, err := c.Downgrade(any(c)); err != nil {
+		t.Error(err)
+	} else if diff := deep.Equal(dg, c); diff != nil {
+		t.Error(diff)
+	}
+	if dg, err := c.Downgrade(any(*c)); err != nil {
 		t.Error(err)
 	} else if diff := deep.Equal(dg, c); diff != nil {
 		t.Error(diff)
@@ -141,7 +146,12 @@ func TestStateStorableInterfaces(t *testing.T) {
 	if diff := deep.Equal(dup, s); diff != nil {
 		t.Error(diff)
 	}
-	if dg, err := (*s).Downgrade(any(*s)); err != nil {
+	if dg, err := s.Downgrade(any(s)); err != nil {
+		t.Error(err)
+	} else if diff := deep.Equal(dg, s); diff != nil {
+		t.Error(diff)
+	}
+	if dg, err := s.Downgrade(any(*s)); err != nil {
 		t.Error(err)
 	} else if diff := deep.Equal(dg, s); diff != nil {
 		t.Error(diff)

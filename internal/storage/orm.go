@@ -35,10 +35,7 @@ func DeleteStorage[T Storable](ctx context.Context, obj T) error {
 type StructPointer interface {
 	Storable
 	SetStorageId(id string) error
-	Copy() any
-}
-
-type Struct interface {
+	Copy() StructPointer
 	Downgrade(any) (StructPointer, error)
 }
 

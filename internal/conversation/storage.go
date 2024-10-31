@@ -38,18 +38,21 @@ func (c *Data) SetStorageId(id string) error {
 	return nil
 }
 
-func (c *Data) Copy() any {
+func (c *Data) Copy() storage.StructPointer {
 	if c == nil {
 		return nil
 	}
 	n := new(Data)
 	*n = *c
-	return any(n)
+	return n
 }
 
-func (c Data) Downgrade(in any) (storage.StructPointer, error) {
+func (c *Data) Downgrade(in any) (storage.StructPointer, error) {
 	if o, ok := in.(Data); ok {
 		return &o, nil
+	}
+	if o, ok := in.(*Data); ok {
+		return o, nil
 	}
 	return nil, fmt.Errorf("not a conversation.Data: %#v", in)
 }
@@ -87,18 +90,21 @@ func (s *State) SetStorageId(id string) error {
 	return nil
 }
 
-func (s *State) Copy() any {
+func (s *State) Copy() storage.StructPointer {
 	if s == nil {
 		return nil
 	}
 	n := new(State)
 	*n = *s
-	return any(n)
+	return n
 }
 
-func (s State) Downgrade(in any) (storage.StructPointer, error) {
+func (s *State) Downgrade(in any) (storage.StructPointer, error) {
 	if o, ok := in.(State); ok {
 		return &o, nil
+	}
+	if o, ok := in.(*State); ok {
+		return o, nil
 	}
 	return nil, fmt.Errorf("not a conversation.State: %#v", in)
 }

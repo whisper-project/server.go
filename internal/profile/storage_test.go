@@ -52,7 +52,12 @@ func TestUserProfileStorableInterfaces(t *testing.T) {
 	if diff := deep.Equal(dup, p); diff != nil {
 		t.Error(diff)
 	}
-	if dg, err := (*p).Downgrade(any(*p)); err != nil {
+	if dg, err := p.Downgrade(any(p)); err != nil {
+		t.Error(err)
+	} else if diff := deep.Equal(dg, p); diff != nil {
+		t.Error(diff)
+	}
+	if dg, err := p.Downgrade(any(*p)); err != nil {
 		t.Error(err)
 	} else if diff := deep.Equal(dg, p); diff != nil {
 		t.Error(diff)

@@ -53,7 +53,12 @@ func TestClientStorableInterfaces(t *testing.T) {
 	if diff := deep.Equal(dup, c); diff != nil {
 		t.Error(diff)
 	}
-	if dg, err := (*c).Downgrade(any(*c)); err != nil {
+	if dg, err := c.Downgrade(any(c)); err != nil {
+		t.Error(err)
+	} else if diff := deep.Equal(dg, c); diff != nil {
+		t.Error(diff)
+	}
+	if dg, err := c.Downgrade(any(*c)); err != nil {
 		t.Error(err)
 	} else if diff := deep.Equal(dg, c); diff != nil {
 		t.Error(diff)
