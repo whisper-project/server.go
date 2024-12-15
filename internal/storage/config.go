@@ -115,7 +115,7 @@ func pushEnvConfig(filename string) error {
 		ApnsCredSecret:   os.Getenv("APNS_CRED_SECRET_PKCS8"),
 		ApnsCredId:       os.Getenv("APNS_CRED_ID"),
 		ApnsTeamId:       os.Getenv("APNS_TEAM_ID"),
-		DbUrl:            os.Getenv("REDISCLOUD_URL"),
+		DbUrl:            os.Getenv("REDIS_URL"),
 		DbKeyPrefix:      os.Getenv("DB_KEY_PREFIX"),
 	}
 	return nil
