@@ -8,7 +8,9 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -94,6 +96,35 @@ func MapFields[T StructPointer](ctx context.Context, f func(), obj T) error {
 	return nil
 }
 
+type String interface {
+	~string
+	Storable
+}
+
+func FetchString[T String](ctx context.Context, obj T) (string, error) {
+	db, prefix := GetDb()
+	key := prefix + obj.StoragePrefix() + obj.StorageId()
+	res := db.Get(ctx, key)
+	if err := res.Err(); err != nil {
+		if errors.Is(err, redis.Nil) {
+			return "", nil
+		} else {
+			return "", err
+		}
+	}
+	return res.Val(), nil
+}
+
+func StoreString[T String](ctx context.Context, obj T, val string) error {
+	db, prefix := GetDb()
+	key := prefix + obj.StoragePrefix() + obj.StorageId()
+	res := db.Set(ctx, key, val, 0)
+	if err := res.Err(); err != nil {
+		return err
+	}
+	return nil
+}
+
 type Set interface {
 	~string
 	Storable
@@ -139,6 +170,53 @@ func RemoveMembers[T Set](ctx context.Context, obj T, members ...string) error {
 		args[i] = any(member)
 	}
 	res := db.SRem(ctx, key, args...)
+	if err := res.Err(); err != nil {
+		return err
+	}
+	return nil
+}
+
+type SortedSet interface {
+	~string
+	Storable
+}
+
+func FetchRangeInterval[T SortedSet](ctx context.Context, obj T, start, end int64) ([]string, error) {
+	db, prefix := GetDb()
+	key := prefix + obj.StoragePrefix() + obj.StorageId()
+	res := db.ZRange(ctx, key, start, end)
+	if err := res.Err(); err != nil {
+		return nil, err
+	}
+	return res.Val(), nil
+}
+
+func FetchRangeScoreInterval[T SortedSet](ctx context.Context, obj T, min, max float64) ([]string, error) {
+	db, prefix := GetDb()
+	key := prefix + obj.StoragePrefix() + obj.StorageId()
+	minStr := strconv.FormatFloat(min, 'f', -1, 64)
+	maxStr := strconv.FormatFloat(max, 'f', -1, 64)
+	res := db.ZRangeByScore(ctx, key, &redis.ZRangeBy{Min: minStr, Max: maxStr})
+	if err := res.Err(); err != nil {
+		return nil, err
+	}
+	return res.Val(), nil
+}
+
+func AddScoredMember[T SortedSet](ctx context.Context, obj T, score float64, member string) error {
+	db, prefix := GetDb()
+	key := prefix + obj.StoragePrefix() + obj.StorageId()
+	res := db.ZAdd(ctx, key, redis.Z{Score: score, Member: member})
+	if err := res.Err(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func RemoveMember[T SortedSet](ctx context.Context, obj T, member string) error {
+	db, prefix := GetDb()
+	key := prefix + obj.StoragePrefix() + obj.StorageId()
+	res := db.ZRem(ctx, key, member)
 	if err := res.Err(); err != nil {
 		return err
 	}

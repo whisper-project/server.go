@@ -65,7 +65,7 @@ When transferring specific objects, you can also dump their JSON to an output fi
 			panic(err)
 		}
 
-		var om ObjectMap
+		var om storage.ObjectMap
 		if from != "" {
 			if err := storage.PushConfig(from); err != nil {
 				panic(err)
@@ -74,7 +74,7 @@ When transferring specific objects, you can also dump their JSON to an output fi
 			if all {
 				om = collectAll()
 			} else {
-				om = make(ObjectMap)
+				om = make(storage.ObjectMap)
 				if ids := strings.Split(profiles, ","); profiles != "" {
 					var p profile.UserProfile
 					om["profiles"] = collectObjectsById("profiles", ids, &p)
@@ -93,16 +93,16 @@ When transferring specific objects, you can also dump their JSON to an output fi
 				}
 			}
 		} else {
-			om = LoadObjectsFromPath(load)
+			om = loadObjectsFromPath(load)
 		}
 		if to != "" {
 			if err := storage.PushConfig(to); err != nil {
 				panic(err)
 			}
 			defer storage.PopConfig()
-			SaveObjects(om)
+			saveObjects(om)
 		} else {
-			DumpObjectsToPath(om, dump)
+			dumpObjectsToPath(om, dump)
 		}
 	},
 }
@@ -130,8 +130,8 @@ func init() {
 	transferCmd.MarkFlagsMutuallyExclusive("load", "all", "states")
 }
 
-func collectAll() ObjectMap {
-	om := make(ObjectMap)
+func collectAll() storage.ObjectMap {
+	om := make(storage.ObjectMap)
 	om["profiles"] = collectObjectsByType("profiles", &profile.UserProfile{})
 	om["clients"] = collectObjectsByType("clients", &client.Data{})
 	om["conversations"] = collectObjectsByType("conversations", &conversation.Data{})

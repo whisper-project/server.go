@@ -18,3 +18,5 @@ local/
 
 # Output of the golang test coverage tool and many others
 *.out
+
+.flaskenv*

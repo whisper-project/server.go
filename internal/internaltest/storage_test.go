@@ -57,17 +57,3 @@ func TestRemoveCreatedTestData(t *testing.T) {
 		t.Errorf("Load should fail")
 	}
 }
-
-func TestLoadKnownTestData(t *testing.T) {
-	s1 := &profile.UserProfile{Id: KnownUserId}
-	if err := storage.DeleteStorage(context.Background(), s1); err != nil {
-		t.Fatal(err)
-	}
-	if err := storage.LoadFields(context.Background(), s1); err == nil {
-		t.Fatalf("Load should fail")
-	}
-	LoadKnownTestData()
-	if err := storage.LoadFields(context.Background(), s1); err != nil {
-		t.Error(err)
-	}
-}

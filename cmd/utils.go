@@ -8,9 +8,7 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -20,8 +18,7 @@ import (
 	"clickonetwo.io/whisper/internal/storage"
 )
 
-// SaveObjects stores all the objects in the map to the current environment
-func SaveObjects(what ObjectMap) {
+func saveObjects(what storage.ObjectMap) {
 	var saved int
 	var t string
 	var as []any
@@ -29,13 +26,13 @@ func SaveObjects(what ObjectMap) {
 		if len(as) > 0 {
 			switch t {
 			case "profiles":
-				saved += saveObjects(t, as, &profile.UserProfile{})
+				saved += saveTypedObjects(t, as, &profile.UserProfile{})
 			case "clients":
-				saved += saveObjects(t, as, &client.Data{})
+				saved += saveTypedObjects(t, as, &client.Data{})
 			case "conversations":
-				saved += saveObjects(t, as, &conversation.Data{})
+				saved += saveTypedObjects(t, as, &conversation.Data{})
 			case "states":
-				saved += saveObjects(t, as, &conversation.State{})
+				saved += saveTypedObjects(t, as, &conversation.State{})
 			default:
 				_, _ = fmt.Fprintf(os.Stderr, "Skipping objects of unknown type: %s", t)
 			}
@@ -46,7 +43,7 @@ func SaveObjects(what ObjectMap) {
 	}
 }
 
-func saveObjects[T storage.StructPointer](name string, oa []any, e T) int {
+func saveTypedObjects[T storage.StructPointer](name string, oa []any, e T) int {
 	var saved int
 	if len(oa) >= 10 {
 		_, _ = fmt.Fprintf(os.Stderr, "Starting to save %s...", name)
@@ -74,82 +71,63 @@ func saveObjects[T storage.StructPointer](name string, oa []any, e T) int {
 	return saved
 }
 
-type ObjectMap map[string][]any
-
-// DumpObjectsToPath serializes the entire map to the given filepath
-func DumpObjectsToPath(what ObjectMap, where string) {
-	var stream io.Writer
+// dumpObjectsToPath serializes the entire map to the given filepath
+// A path of "-" means use the standard input. Otherwise, if the path does
+// not have a JSON extension, one is added.
+func dumpObjectsToPath(what storage.ObjectMap, where string) {
 	if where == "-" {
-		stream = os.Stdout
-	} else {
-		if !strings.HasSuffix(where, ".json") {
-			where = where + ".json"
-		}
-		file, err := os.OpenFile(where, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
-		if err != nil {
+		if err := storage.DumpObjectsToStream(what, os.Stdout); err != nil {
 			panic(err)
 		}
-		defer file.Close()
-		stream = file
-	}
-	DumpObjectsToStream(stream, what)
-	if where != "-" {
+	} else {
+		if !strings.HasSuffix(strings.ToLower(where), ".json") {
+			where = where + ".json"
+		}
+		if err := storage.DumpObjectsToPath(what, where); err != nil {
+			panic(err)
+		}
 		fmt.Printf("Objects dumped to %q\n", where)
 	}
 }
 
-// DumpObjectsToStream marshals the objects as JSON to the given stream
-func DumpObjectsToStream(stream io.Writer, what ObjectMap) {
-	encoder := json.NewEncoder(stream)
-	encoder.SetIndent("", "  ")
-	encoder.SetEscapeHTML(false)
-	if err := encoder.Encode(what); err != nil {
-		panic(err)
-	}
-}
-
-// LoadObjectsFromPath loads the objects dumped to the given filepath
-func LoadObjectsFromPath(where string) ObjectMap {
-	var stream io.Reader
+// loadObjectsFromPath loads the objects dumped to the given filepath
+// A path of "-" means use the standard input. Otherwise, if the path does
+// not have a JSON extension, one is added.
+func loadObjectsFromPath(where string) storage.ObjectMap {
+	var som storage.StoredObjectMap
+	var err error
 	if where == "-" {
-		stream = os.Stdin
+		som, err = storage.LoadObjectsFromStream(os.Stdin)
 	} else {
-		if !strings.HasSuffix(where, ".json") {
+		if !strings.HasSuffix(strings.ToLower(where), ".json") {
 			where = where + ".json"
 		}
-		file, err := os.OpenFile(where, os.O_RDONLY, 0o644)
-		if err != nil {
-			panic(err)
-		}
-		defer file.Close()
-		stream = file
+		som, err = storage.LoadObjectsFromPath(where)
 	}
-	return LoadObjectsFromStream(stream)
-}
-
-// LoadObjectsFromStream creates objects from a stream containing a JSON-serialized object map
-func LoadObjectsFromStream(stream io.Reader) ObjectMap {
-	decoder := json.NewDecoder(stream)
-	m := make(map[string][]json.RawMessage)
-	if err := decoder.Decode(&m); err != nil {
+	if err != nil {
 		panic(err)
 	}
-	om := make(ObjectMap)
-	om["profiles"] = unmarshalAll("profile", profile.UserProfile{}, m["profiles"])
-	om["clients"] = unmarshalAll("client", client.Data{}, m["clients"])
-	om["conversations"] = unmarshalAll("conversation", conversation.Data{}, m["conversations"])
-	om["states"] = unmarshalAll("state", conversation.State{}, m["states"])
-	return om
+	return loadObjectsFromStorage(som)
 }
 
-func unmarshalAll[T any](name string, o T, ms []json.RawMessage) []any {
-	objs := make([]any, 0, len(ms))
-	for _, js := range ms {
-		if err := json.Unmarshal(js, &o); err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "Skipping invalid %s data: %s", name, js)
-		} else {
-			objs = append(objs, any(o))
-		}
+func loadObjectsFromStorage(som storage.StoredObjectMap) storage.ObjectMap {
+	result := make(storage.ObjectMap)
+	var err error
+	result["profiles"], err = storage.UnmarshalStoredObjects(profile.UserProfile{}, som["profiles"])
+	if err != nil {
+		panic(err)
 	}
-	return objs
+	result["clients"], err = storage.UnmarshalStoredObjects(client.Data{}, som["clients"])
+	if err != nil {
+		panic(err)
+	}
+	result["conversations"], err = storage.UnmarshalStoredObjects(conversation.Data{}, som["conversations"])
+	if err != nil {
+		panic(err)
+	}
+	result["states"], err = storage.UnmarshalStoredObjects(conversation.State{}, som["states"])
+	if err != nil {
+		panic(err)
+	}
+	return result
 }

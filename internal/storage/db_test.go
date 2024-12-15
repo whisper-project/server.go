@@ -7,27 +7,32 @@
 package storage
 
 import (
+	"strings"
 	"testing"
 )
 
 func TestGetDb(t *testing.T) {
-	db, prefix := GetDb()
-	if db == nil || prefix != "t:" {
-		t.Errorf("initial GetDb didn't return test db: %v, %q", db, prefix)
+	db0, prefix := GetDb()
+	if db0 == nil || !strings.HasSuffix(prefix, ":c:") {
+		t.Errorf("initial GetDb didn't return CI db: %v, %q", db0, prefix)
+	}
+	db1, _ := GetDb()
+	if db1 != db0 {
+		t.Errorf("GetDb didn't return cached db: %#v, %#v", &db0, &db1)
 	}
 }
 
 func TestGetMultiDifferentDbs(t *testing.T) {
-	dbT, prefixT := GetDb()
-	// t.Logf("Initial test database is: %v, %q", dbT, prefixT)
+	dbC, prefixC := GetDb()
+	// t.Logf("Initial CI database is: %v, %q", dbC, prefixC)
 	if err := PushConfig("development"); err != nil {
 		t.Fatalf("failed to push development config: %v", err)
 	}
 	dbD, prefixD := GetDb()
-	if dbT == dbD || prefixT == prefixD {
-		t.Fatalf("Dbs before and after dev push are the same: %v & %v, %q & %q", dbT, dbD, prefixT, prefixD)
+	if dbC == dbD || prefixC == prefixD {
+		t.Fatalf("Dbs before and after dev push are the same: %v & %v, %q & %q", dbC, dbD, prefixC, prefixD)
 	}
-	if dbD == nil || prefixD != "d:" {
+	if dbD == nil || !strings.HasSuffix(prefixD, ":d:") {
 		t.Fatalf("GetDb didn't return dev db after push: %v, %q", dbD, prefixD)
 	} else {
 		// t.Logf("Pushed dev database is: %v, %q", dbD, prefixD)
@@ -39,7 +44,7 @@ func TestGetMultiDifferentDbs(t *testing.T) {
 	if dbD == dbS || prefixD == prefixS {
 		t.Fatalf("Dbs before and after stage push are the same: %v & %v, %q & %q", dbD, dbS, prefixD, prefixS)
 	}
-	if dbS == nil || prefixS != "s:" {
+	if dbS == nil || !strings.HasSuffix(prefixS, ":s:") {
 		t.Fatalf("GetDb didn't return staging db after push: %v, %q", dbS, prefixS)
 	} else {
 		// t.Logf("Pushed staging database is: %v, %q", dbS, prefixS)
@@ -59,7 +64,7 @@ func TestGetMultiDifferentDbs(t *testing.T) {
 	if dbP == dbD2 || prefixP == prefixD2 {
 		t.Fatalf("Dbs before and after prod push are the same: %v & %v, %q & %q", dbP, dbD2, prefixP, prefixD2)
 	}
-	if dbP == nil || prefixP != "p:" {
+	if dbP == nil || !strings.HasSuffix(prefixP, ":p:") {
 		t.Fatalf("GetDb didn't return prod db after push: %v, %q", dbP, prefixP)
 	} else {
 		// t.Logf("Pushed prod database is: %v, %q", dbP, prefixP)
@@ -74,10 +79,10 @@ func TestGetMultiDifferentDbs(t *testing.T) {
 	}
 	PopConfig()
 	dbT2, prefixT2 := GetDb()
-	if prefixT2 != prefixT {
+	if prefixT2 != prefixC {
 		t.Fatalf("Test prefix after pop is %q", prefixT2)
 	}
-	if dbT2 == dbT {
+	if dbT2 == dbC {
 		t.Errorf("Test db before and after pop are the same: %v", dbT2)
 	}
 }

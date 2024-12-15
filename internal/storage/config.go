@@ -14,7 +14,8 @@ import (
 	"github.com/dotenv-org/godotenvvault"
 )
 
-type Config struct {
+type Environment struct {
+	Name             string
 	AblyPublishKey   string
 	AblySubscribeKey string
 	ApnsUrl          string
@@ -25,8 +26,10 @@ type Config struct {
 	DbKeyPrefix      string
 }
 
+//goland:noinspection SpellCheckingInspection
 var (
-	testConfig = Config{
+	ciConfig = Environment{
+		Name:             "CI",
 		AblyPublishKey:   "xVLyHw.DGYdkQ:FtPUNIourpYSoZAIbeon0p_rJGtb5vO1j2OIzP3GMX8",
 		AblySubscribeKey: "xVLyHw.DGYdkQ:FtPUNIourpYSoZAIbeon0p_rJGtb5vO1j2OIzP3GMX8",
 		ApnsUrl:          "http://localhost:2197",
@@ -34,38 +37,46 @@ var (
 		ApnsCredId:       "89AB98CD89",
 		ApnsTeamId:       "8CD8989AB9",
 		DbUrl:            "redis://",
-		DbKeyPrefix:      "t:",
+		DbKeyPrefix:      "c:",
 	}
-	loadedConfig = testConfig
-	configStack  []Config
+	loadedConfig = ciConfig
+	configStack  []Environment
 )
 
-func GetConfig() Config {
+func GetConfig() Environment {
 	return loadedConfig
 }
 
-func PushConfig(env string) error {
-	if env == "" {
+func PushConfig(name string) error {
+	if name == "" {
 		return pushEnvConfig("")
 	}
-	if strings.HasPrefix(env, "t") {
-		return pushTestConfig()
+	if strings.HasPrefix(name, "c") {
+		return pushCiConfig()
 	}
-	if strings.HasPrefix(env, "d") {
+	if strings.HasPrefix(name, "d") {
 		return pushEnvConfig(".env")
 	}
-	if strings.HasPrefix(env, "s") {
+	if strings.HasPrefix(name, "s") {
 		return pushEnvConfig(".env.staging")
 	}
-	if strings.HasPrefix(env, "p") {
+	if strings.HasPrefix(name, "p") {
 		return pushEnvConfig(".env.production")
 	}
-	return fmt.Errorf("unknown environment: %s", env)
+	if strings.HasPrefix(name, "t") {
+		return pushEnvConfig(".env.testing")
+	}
+	return fmt.Errorf("unknown environment: %s", name)
 }
 
-func pushTestConfig() error {
+func PushAlteredConfig(env Environment) {
 	configStack = append(configStack, loadedConfig)
-	loadedConfig = testConfig
+	loadedConfig = env
+}
+
+func pushCiConfig() error {
+	configStack = append(configStack, loadedConfig)
+	loadedConfig = ciConfig
 	return nil
 }
 
@@ -73,7 +84,7 @@ func pushEnvConfig(filename string) error {
 	var d string
 	var err error
 	if filename == "" {
-		if d, err = findEnvFile(".env.vault"); err == nil {
+		if d, err = FindEnvFile(".env.vault", true); err == nil {
 			if d == "" {
 				err = godotenvvault.Overload()
 			} else {
@@ -88,7 +99,7 @@ func pushEnvConfig(filename string) error {
 			}
 		}
 	} else {
-		if d, err = findEnvFile(filename); err == nil {
+		if d, err = FindEnvFile(filename, false); err == nil {
 			err = godotenvvault.Overload(d + filename)
 		}
 	}
@@ -96,7 +107,8 @@ func pushEnvConfig(filename string) error {
 		return fmt.Errorf("error loading .env vars: %v", err)
 	}
 	configStack = append(configStack, loadedConfig)
-	loadedConfig = Config{
+	loadedConfig = Environment{
+		Name:             os.Getenv("ENVIRONMENT_NAME"),
 		AblyPublishKey:   os.Getenv("ABLY_PUBLISH_KEY"),
 		AblySubscribeKey: os.Getenv("ABLY_SUBSCRIBE_KEY"),
 		ApnsUrl:          os.Getenv("APNS_SERVER"),
@@ -118,7 +130,7 @@ func PopConfig() {
 	return
 }
 
-func findEnvFile(name string) (string, error) {
+func FindEnvFile(name string, fallback bool) (string, error) {
 	for i := range 5 {
 		d := ""
 		for range i {
@@ -126,6 +138,11 @@ func findEnvFile(name string) (string, error) {
 		}
 		if _, err := os.Stat(d + name); err == nil {
 			return d, nil
+		}
+		if fallback {
+			if _, err := os.Stat(d + ".env"); err == nil {
+				return d, nil
+			}
 		}
 	}
 	return "", fmt.Errorf("no file %q found in path", name)

@@ -182,6 +182,33 @@ func TestCopyDowngradeOrmTester(t *testing.T) {
 	}
 }
 
+type OrmTestString string
+
+func (s OrmTestString) StoragePrefix() string {
+	return "ormTestString:"
+}
+
+func (s OrmTestString) StorageId() string {
+	return string(s)
+}
+
+func TestFetchSetFetchString(t *testing.T) {
+	ctx := context.Background()
+	id := OrmTestString(uuid.New().String())
+	if val, err := FetchString(ctx, id); err != nil || val != "" {
+		t.Errorf("FetchString of missing string failed (%v), expected success with empty value (%s)", err, val)
+	}
+	if err := StoreString(ctx, id, string(id)); err != nil {
+		t.Error(err)
+	}
+	if val, err := FetchString(ctx, id); err != nil || val != string(id) {
+		t.Errorf("FetchString of failed (%v), expected %q got %q", err, string(id), val)
+	}
+	if err := DeleteStorage(ctx, id); err != nil {
+		t.Error(err)
+	}
+}
+
 type OrmTestSet string
 
 func (s OrmTestSet) StoragePrefix() string {
@@ -228,6 +255,55 @@ func TestAddFetchRemoveMembers(t *testing.T) {
 	}
 	if err := DeleteStorage(ctx, &id); err != nil {
 		t.Errorf("Failed to delete stored data for %q: %v", id, err)
+	}
+}
+
+type OrmTestSortedSet string
+
+func (s OrmTestSortedSet) StoragePrefix() string {
+	return "ormTestSortedSet:"
+}
+
+func (s OrmTestSortedSet) StorageId() string {
+	return string(s)
+}
+
+func TestSortedFetchAddFetchRemoveMembers(t *testing.T) {
+	ctx := context.Background()
+	id := OrmTestSortedSet(uuid.New().String())
+	sorted := []string{"a", "b", "c"}
+	if members, err := FetchRangeInterval(ctx, id, 0, -1); err != nil || len(members) != 0 {
+		t.Errorf("FetchRangeInterval of empty failed (%v) or has members: %v", err, members)
+	}
+	if err := AddScoredMember(ctx, id, 3, "c"); err != nil {
+		t.Error(err)
+	}
+	if err := AddScoredMember(ctx, id, 2, "b"); err != nil {
+		t.Error(err)
+	}
+	if err := AddScoredMember(ctx, id, 1, "a"); err != nil {
+		t.Error(err)
+	}
+	if found, err := FetchRangeInterval(ctx, id, 0, -1); err != nil {
+		t.Error(err)
+	} else if diff := deep.Equal(sorted, found); diff != nil {
+		t.Error(diff)
+	}
+	if found, err := FetchRangeScoreInterval(ctx, id, 2, 3); err != nil {
+		t.Error(err)
+	} else if diff := deep.Equal(sorted[1:3], found); diff != nil {
+		t.Error(diff)
+	}
+	if err := RemoveMember(ctx, id, "a"); err != nil {
+		t.Error(err)
+	}
+	if found, err := FetchRangeInterval(ctx, id, 0, -1); err != nil {
+		t.Error(err)
+	} else if diff := deep.Equal(sorted[1:3], found); diff != nil {
+		t.Error(diff)
+	}
+	if err := DeleteStorage(ctx, &id); err != nil {
+		t.Error(err)
 	}
 }
 

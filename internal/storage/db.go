@@ -13,14 +13,15 @@ import (
 )
 
 var (
-	clientUrl string
-	client    *redis.Client
-	keyPrefix string
+	projectPrefix = "whisper:"
+	clientUrl     string
+	client        *redis.Client
+	keyPrefix     string
 )
 
 func GetDb() (*redis.Client, string) {
 	config := GetConfig()
-	if client != nil && clientUrl == config.DbUrl && keyPrefix == config.DbKeyPrefix {
+	if client != nil && clientUrl == config.DbUrl && keyPrefix == projectPrefix+config.DbKeyPrefix {
 		return client, keyPrefix
 	}
 	opts, err := redis.ParseURL(config.DbUrl)
@@ -29,6 +30,6 @@ func GetDb() (*redis.Client, string) {
 	}
 	clientUrl = config.DbUrl
 	client = redis.NewClient(opts)
-	keyPrefix = config.DbKeyPrefix
+	keyPrefix = projectPrefix + config.DbKeyPrefix
 	return client, keyPrefix
 }
