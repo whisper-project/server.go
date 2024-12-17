@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"clickonetwo.io/whisper/internal/storage"
+	"clickonetwo.io/whisper/server/storage"
 )
 
 type UserProfile struct {

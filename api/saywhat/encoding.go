@@ -15,8 +15,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"clickonetwo.io/whisper/internal/profile"
-	"clickonetwo.io/whisper/internal/storage"
+	"clickonetwo.io/whisper/server/profile"
+	"clickonetwo.io/whisper/server/storage"
 )
 
 type Settings struct {

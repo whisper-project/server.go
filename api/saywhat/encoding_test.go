@@ -9,8 +9,8 @@ package saywhat
 import (
 	"testing"
 
-	"clickonetwo.io/whisper/internal/internaltest"
-	"clickonetwo.io/whisper/internal/middleware"
+	"clickonetwo.io/whisper/server/internaltest"
+	"clickonetwo.io/whisper/server/middleware"
 )
 
 func TestSettings_AddMissingSettings(t *testing.T) {

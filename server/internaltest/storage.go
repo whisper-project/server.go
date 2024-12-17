@@ -11,7 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"clickonetwo.io/whisper/internal/storage"
+	"clickonetwo.io/whisper/server/storage"
 )
 
 //goland:noinspection SpellCheckingInspection

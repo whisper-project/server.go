@@ -15,8 +15,8 @@ import (
 	"github.com/go-test/deep"
 	"github.com/google/uuid"
 
-	"clickonetwo.io/whisper/internal/internaltest"
-	"clickonetwo.io/whisper/internal/storage"
+	"clickonetwo.io/whisper/server/internaltest"
+	"clickonetwo.io/whisper/server/storage"
 )
 
 func TestConversationStorableInterfaces(t *testing.T) {

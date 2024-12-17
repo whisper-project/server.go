@@ -12,8 +12,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"clickonetwo.io/whisper/internal/middleware"
-	"clickonetwo.io/whisper/internal/storage"
+	"clickonetwo.io/whisper/server/middleware"
+	"clickonetwo.io/whisper/server/storage"
 )
 
 func TestHasAuthChanged(t *testing.T) {

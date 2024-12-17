@@ -13,8 +13,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"clickonetwo.io/whisper/internal/internaltest"
-	"clickonetwo.io/whisper/internal/storage"
+	"clickonetwo.io/whisper/server/internaltest"
+	"clickonetwo.io/whisper/server/storage"
 )
 
 // testCmd represents the test command

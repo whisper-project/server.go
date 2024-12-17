@@ -12,8 +12,8 @@ import (
 
 	"github.com/go-test/deep"
 
-	"clickonetwo.io/whisper/internal/profile"
-	"clickonetwo.io/whisper/internal/storage"
+	"clickonetwo.io/whisper/server/profile"
+	"clickonetwo.io/whisper/server/storage"
 )
 
 func TestLoadAndCopy(t *testing.T) {
