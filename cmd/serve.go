@@ -8,51 +8,53 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 
+	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 
-	"clickonetwo.io/whisper/api/saywhat"
-	"clickonetwo.io/whisper/server/middleware"
-	"clickonetwo.io/whisper/server/storage"
+	"github.com/whisper-project/server.go/api/console"
+	"github.com/whisper-project/server.go/api/saywhat"
+	"github.com/whisper-project/server.go/internal/middleware"
+	"github.com/whisper-project/server.go/internal/storage"
 )
 
 // serveCmd represents the serve command
 var serveCmd = &cobra.Command{
 	Use:   "serve",
-	Short: "Run the whisperapp server",
-	Long: `Runs the whisperapp server process.
-The whisperapp will never terminate unless it is interrupted/terminated.`,
+	Short: "Run the whisper server",
+	Long: `Runs the whisper server until it's killed by signal.
+Runs in the development environment by default.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		log.SetFlags(0)
+		env, _ := cmd.Flags().GetString("env")
+		err := storage.PushConfig(env)
+		if err != nil {
+			panic(fmt.Sprintf("Can't load configuration: %v", err))
+		}
+		defer storage.PopConfig()
 		serve()
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(serveCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// serveCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// serveCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	serveCmd.Args = cobra.NoArgs
+	serveCmd.Flags().StringP("env", "e", "development", "The environment to run in")
 }
 
 func serve() {
-	err := storage.PushConfig(".env")
-	if err != nil {
-		panic(fmt.Sprintf("Can't load configuration: %v", err))
+	if storage.GetConfig().Name == "production" {
+		gin.SetMode(gin.ReleaseMode)
 	}
-	defer storage.PopConfig()
 	r := middleware.CreateCoreEngine()
+	_ = r.SetTrustedProxies(nil)
 	r.Static("/say-what", "./saywhat.js/dist")
 	sayWhat := r.Group("/api/say-what/v1")
 	saywhat.AddRoutes(sayWhat)
-	err = r.Run("localhost:5000")
-	if err != nil {
-		fmt.Printf("Server exited with error: %v", err)
+	consoleClient := r.Group("/api/console/v0")
+	console.AddRoutes(consoleClient)
+	if err := r.Run("localhost:8080"); err != nil {
+		log.Fatalf("Server error: %v", err)
 	}
 }

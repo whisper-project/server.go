@@ -386,3 +386,62 @@ func TestFetchOneBlocking(t *testing.T) {
 		t.Errorf("FetchRange of remaining list is:\n%v\ndifferences are:\n%v", remaining, diff)
 	}
 }
+
+type OrmTestMap string
+
+func (s OrmTestMap) StoragePrefix() string {
+	return "ormTestMap:"
+}
+
+func (s OrmTestMap) StorageId() string {
+	return string(s)
+}
+
+func TestOrmTestMap(t *testing.T) {
+	ctx := context.Background()
+	id := OrmTestMap(uuid.New().String())
+
+	// Attempt to fetch an element that doesn't exist
+	if val, err := MapGet(ctx, id, "nonexistent"); err != nil || val != "" {
+		t.Errorf("FetchMapElement of nonexistent key failed (%v), expected success with empty value (%q)", err, val)
+	}
+
+	// Add an element to the map
+	key, value := "testKey", "testValue"
+	if err := MapSet(ctx, id, key, value); err != nil {
+		t.Errorf("SetMapElement failed: %v", err)
+	}
+
+	// Retrieve the element and test its value
+	if val, err := MapGet(ctx, id, key); err != nil || val != value {
+		t.Errorf("FetchMapElement failed (%v), expected %q but got %q", err, value, val)
+	}
+
+	// Add another element to the map
+	anotherKey, anotherValue := "anotherKey", "anotherValue"
+	if err := MapSet(ctx, id, anotherKey, anotherValue); err != nil {
+		t.Errorf("SetMapElement failed: %v", err)
+	}
+
+	// Retrieve all elements and validate their values
+	if allElements, err := MapGetAll(ctx, id); err != nil {
+		t.Errorf("MapGetAll failed: %v", err)
+	} else if len(allElements) != 2 || allElements[key] != value || allElements[anotherKey] != anotherValue {
+		t.Errorf("MapGetAll returned unexpected results: %v", allElements)
+	}
+
+	// Remove an element from the map
+	if err := MapRemove(ctx, id, key); err != nil {
+		t.Errorf("MapRemove failed: %v", err)
+	}
+
+	// Verify the removed key does not exist
+	if val, err := MapGet(ctx, id, key); err != nil || val != "" {
+		t.Errorf("MapGet after removal failed (%v), expected empty value but got %q", err, val)
+	}
+
+	// Clean up by deleting the map
+	if err := DeleteStorage(ctx, &id); err != nil {
+		t.Errorf("Failed to delete stored map for %q: %v", id, err)
+	}
+}

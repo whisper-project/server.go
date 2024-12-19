@@ -9,7 +9,7 @@ package conversation
 import (
 	"fmt"
 
-	"clickonetwo.io/whisper/server/storage"
+	"github.com/whisper-project/server.go/internal/storage"
 )
 
 type Data struct {

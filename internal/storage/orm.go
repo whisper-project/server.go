@@ -276,3 +276,52 @@ func RemoveElement[T List](ctx context.Context, obj T, count int64, element stri
 	}
 	return nil
 }
+
+type Map interface {
+	Storable
+	~string
+}
+
+func MapGet[T Map](ctx context.Context, obj T, k string) (string, error) {
+	db, prefix := GetDb()
+	key := prefix + obj.StoragePrefix() + obj.StorageId()
+	res := db.HGet(ctx, key, k)
+	if err := res.Err(); err != nil {
+		if errors.Is(err, redis.Nil) {
+			return "", nil
+		} else {
+			return "", err
+		}
+	}
+	return res.Val(), nil
+}
+
+func MapSet[T Map](ctx context.Context, obj T, k string, v string) error {
+	db, prefix := GetDb()
+	key := prefix + obj.StoragePrefix() + obj.StorageId()
+	res := db.HSet(ctx, key, k, v)
+	if err := res.Err(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func MapGetAll[T Map](ctx context.Context, obj T) (map[string]string, error) {
+	db, prefix := GetDb()
+	key := prefix + obj.StoragePrefix() + obj.StorageId()
+	res := db.HGetAll(ctx, key)
+	if err := res.Err(); err != nil {
+		return nil, err
+	}
+	return res.Val(), nil
+}
+
+func MapRemove[T Map](ctx context.Context, obj T, k string) error {
+	db, prefix := GetDb()
+	key := prefix + obj.StoragePrefix() + obj.StorageId()
+	res := db.HDel(ctx, key, k)
+	if err := res.Err(); err != nil {
+		return err
+	}
+	return nil
+}

@@ -14,10 +14,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"clickonetwo.io/whisper/server/client"
-	"clickonetwo.io/whisper/server/conversation"
-	"clickonetwo.io/whisper/server/profile"
-	"clickonetwo.io/whisper/server/storage"
+	"github.com/whisper-project/server.go/internal/client"
+	"github.com/whisper-project/server.go/internal/conversation"
+	"github.com/whisper-project/server.go/internal/profile"
+	"github.com/whisper-project/server.go/internal/storage"
 )
 
 // transferCmd represents the transfer command

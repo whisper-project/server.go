@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"clickonetwo.io/whisper/server/storage"
+	"github.com/whisper-project/server.go/internal/storage"
 )
 
 type UserProfile struct {
@@ -57,7 +57,7 @@ func (p *UserProfile) Copy() storage.StructPointer {
 	return n
 }
 
-func (c *UserProfile) Downgrade(in any) (storage.StructPointer, error) {
+func (p *UserProfile) Downgrade(in any) (storage.StructPointer, error) {
 	if o, ok := in.(UserProfile); ok {
 		return &o, nil
 	}

@@ -16,8 +16,8 @@ import (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "whisperapp",
-	Short: "Whisperapp is the next generation Whisper server",
-	Long: `Whisperapp, the next generation Whisper server,
+	Short: "Whisperapp is the next generation Whisper internal",
+	Long: `Whisperapp, the next generation Whisper internal,
 provides back-end services used by the iOS/macOS Whisper app.`,
 }
 

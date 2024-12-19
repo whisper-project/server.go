@@ -3,10 +3,13 @@
  * All the copyrighted work in this repository is licensed under the
  * GNU Affero General Public License v3, reproduced in the LICENSE file.
  */
-package main
 
-import "github.com/whisper-project/server.go/cmd"
+package console
 
-func main() {
-	cmd.Execute()
+import (
+	"github.com/gin-gonic/gin"
+)
+
+func AddRoutes(r *gin.RouterGroup) {
+	r.POST("/client/prefs", PostPrefsHandler)
 }

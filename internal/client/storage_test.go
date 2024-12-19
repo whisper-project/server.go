@@ -13,8 +13,8 @@ import (
 
 	"github.com/go-test/deep"
 
-	"clickonetwo.io/whisper/server/internaltest"
-	"clickonetwo.io/whisper/server/storage"
+	"github.com/whisper-project/server.go/internal/internaltest"
+	"github.com/whisper-project/server.go/internal/storage"
 )
 
 func TestClientStorableInterfaces(t *testing.T) {
