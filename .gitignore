@@ -2,7 +2,7 @@
 local/
 
 # built module main
-/server.go
+/server.golang*
 
 # dotenv
 .env*
