@@ -13,8 +13,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/whisper-project/server.go/internal/internaltest"
-	"github.com/whisper-project/server.go/internal/storage"
+	"github.com/whisper-project/server.golang/internal/internaltest"
+	"github.com/whisper-project/server.golang/internal/storage"
 )
 
 // testCmd represents the test command

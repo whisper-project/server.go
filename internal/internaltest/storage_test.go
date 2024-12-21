@@ -12,8 +12,8 @@ import (
 
 	"github.com/go-test/deep"
 
-	"github.com/whisper-project/server.go/internal/profile"
-	"github.com/whisper-project/server.go/internal/storage"
+	"github.com/whisper-project/server.golang/internal/profile"
+	"github.com/whisper-project/server.golang/internal/storage"
 )
 
 func TestLoadAndCopy(t *testing.T) {

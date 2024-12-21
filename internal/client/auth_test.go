@@ -12,8 +12,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/whisper-project/server.go/internal/middleware"
-	"github.com/whisper-project/server.go/internal/storage"
+	"github.com/whisper-project/server.golang/internal/middleware"
+	"github.com/whisper-project/server.golang/internal/storage"
 )
 
 func TestHasAuthChanged(t *testing.T) {

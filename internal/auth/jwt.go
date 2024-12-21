@@ -16,8 +16,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 
-	"github.com/whisper-project/server.go/internal/middleware"
-	"github.com/whisper-project/server.go/internal/storage"
+	"github.com/whisper-project/server.golang/internal/middleware"
+	"github.com/whisper-project/server.golang/internal/storage"
 )
 
 func CreateApnsJwt(c *gin.Context) (string, error) {

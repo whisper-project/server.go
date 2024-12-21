@@ -1,4 +1,4 @@
-module github.com/whisper-project/server.go
+module github.com/whisper-project/server.golang
 
 go 1.23.3
 
@@ -12,9 +12,10 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/redis/go-redis/v9 v9.7.0
 	github.com/spf13/cobra v1.8.1
-	github.com/whisper-project/client.go v0.0.0-20241219223713-2913a8792f03
+	github.com/whisper-project/client.golang v0.0.0-20241219223713-2913a8792f03
 	go.uber.org/zap v1.27.0
 	golang.org/x/text v0.21.0
+	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
 )
 
 require (
@@ -49,5 +50,8 @@ require (
 	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	google.golang.org/protobuf v1.36.0 // indirect
+	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/whisper-project/client.golang => ../client.golang

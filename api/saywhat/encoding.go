@@ -15,8 +15,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/whisper-project/server.go/internal/profile"
-	"github.com/whisper-project/server.go/internal/storage"
+	"github.com/whisper-project/server.golang/internal/profile"
+	"github.com/whisper-project/server.golang/internal/storage"
 )
 
 type Settings struct {

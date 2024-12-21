@@ -13,8 +13,8 @@ import (
 
 	"github.com/go-test/deep"
 
-	"github.com/whisper-project/server.go/internal/internaltest"
-	"github.com/whisper-project/server.go/internal/storage"
+	"github.com/whisper-project/server.golang/internal/internaltest"
+	"github.com/whisper-project/server.golang/internal/storage"
 )
 
 func TestUserProfileStorableInterfaces(t *testing.T) {

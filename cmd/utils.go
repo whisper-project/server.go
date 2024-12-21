@@ -12,10 +12,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/whisper-project/server.go/internal/client"
-	"github.com/whisper-project/server.go/internal/conversation"
-	"github.com/whisper-project/server.go/internal/profile"
-	"github.com/whisper-project/server.go/internal/storage"
+	"github.com/whisper-project/server.golang/internal/client"
+	"github.com/whisper-project/server.golang/internal/conversation"
+	"github.com/whisper-project/server.golang/internal/profile"
+	"github.com/whisper-project/server.golang/internal/storage"
 )
 
 func saveObjects(what storage.ObjectMap) {

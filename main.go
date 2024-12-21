@@ -5,7 +5,7 @@
  */
 package main
 
-import "github.com/whisper-project/server.go/cmd"
+import "github.com/whisper-project/server.golang/cmd"
 
 func main() {
 	cmd.Execute()

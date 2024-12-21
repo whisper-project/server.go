@@ -14,4 +14,5 @@ func AddRoutes(r *gin.RouterGroup) {
 	r.POST("/preferences", PostPrefsHandler)
 	r.GET("/profiles/:profileId/whisper-conversations", GetProfileWhisperConversations)
 	r.POST("/profiles/:profileId/whisper-conversations", PostProfileWhisperConversation)
+	r.POST("/request-email", PostRequestEmailHandler)
 }

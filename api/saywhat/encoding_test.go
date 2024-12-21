@@ -9,8 +9,8 @@ package saywhat
 import (
 	"testing"
 
-	"github.com/whisper-project/server.go/internal/internaltest"
-	"github.com/whisper-project/server.go/internal/middleware"
+	"github.com/whisper-project/server.golang/internal/internaltest"
+	"github.com/whisper-project/server.golang/internal/middleware"
 )
 
 func TestSettings_AddMissingSettings(t *testing.T) {

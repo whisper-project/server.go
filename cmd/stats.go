@@ -17,9 +17,9 @@ import (
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/spf13/cobra"
 
-	"github.com/whisper-project/server.go/internal/client"
-	"github.com/whisper-project/server.go/internal/profile"
-	"github.com/whisper-project/server.go/internal/storage"
+	"github.com/whisper-project/server.golang/internal/client"
+	"github.com/whisper-project/server.golang/internal/profile"
+	"github.com/whisper-project/server.golang/internal/storage"
 )
 
 // statsCmd represents the stats command
