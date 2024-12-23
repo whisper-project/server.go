@@ -8,6 +8,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -82,6 +83,8 @@ func TestLoadMissingOrmTester(t *testing.T) {
 	data := &OrmTestStruct{IdField: uuid.New().String()}
 	if err := LoadFields(context.Background(), data); err == nil {
 		t.Errorf("Found stored data for new test object %q", data.IdField)
+	} else if !errors.Is(err, StructPointerNotFoundError) {
+		t.Errorf("Expected StructPointerNotFound, got %#v", err)
 	}
 }
 

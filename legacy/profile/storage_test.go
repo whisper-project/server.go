@@ -11,10 +11,11 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/whisper-project/server.golang/common/storage"
+
 	"github.com/go-test/deep"
 
-	"github.com/whisper-project/server.golang/internal/internaltest"
-	"github.com/whisper-project/server.golang/internal/storage"
+	"github.com/whisper-project/server.golang/legacy/internaltest"
 )
 
 func TestUserProfileStorableInterfaces(t *testing.T) {

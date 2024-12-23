@@ -13,10 +13,11 @@ import (
 	"strconv"
 	"strings"
 
+	storage2 "github.com/whisper-project/server.golang/common/storage"
+
 	"github.com/gin-gonic/gin"
 
-	"github.com/whisper-project/server.golang/internal/profile"
-	"github.com/whisper-project/server.golang/internal/storage"
+	"github.com/whisper-project/server.golang/legacy/profile"
 )
 
 type Settings struct {
@@ -42,20 +43,20 @@ type VoiceSettings struct {
 
 // addMissingSettings adds any missing settings expected by Say What.
 func (s *Settings) addMissingSettings() {
-	storage.SetIfMissing(&s.ApiRoot, "https://api.elevenlabs.io/v1")
-	storage.SetIfMissing(&s.GenerationSettings.OutputFormat, "mp3_44100_128")
-	storage.SetIfMissing(&s.GenerationSettings.OptimizeStreamingLatency, "1")
+	storage2.SetIfMissing(&s.ApiRoot, "https://api.elevenlabs.io/v1")
+	storage2.SetIfMissing(&s.GenerationSettings.OutputFormat, "mp3_44100_128")
+	storage2.SetIfMissing(&s.GenerationSettings.OptimizeStreamingLatency, "1")
 	//goland:noinspection SpellCheckingInspection
-	storage.SetIfMissing(&s.GenerationSettings.VoiceId, `pNInz6obpgDQGcFmaJgB`) // Adam - free voice
-	storage.SetIfMissing(&s.GenerationSettings.ModelId, "eleven_turbo_v2")
-	storage.SetIfMissing(&s.GenerationSettings.VoiceSettings.SimilarityBoost, 0.5)
-	storage.SetIfMissing(&s.GenerationSettings.VoiceSettings.Stability, 0.5)
-	storage.SetIfMissing(&s.GenerationSettings.VoiceSettings.UseSpeakerBoost, true)
+	storage2.SetIfMissing(&s.GenerationSettings.VoiceId, `pNInz6obpgDQGcFmaJgB`) // Adam - free voice
+	storage2.SetIfMissing(&s.GenerationSettings.ModelId, "eleven_turbo_v2")
+	storage2.SetIfMissing(&s.GenerationSettings.VoiceSettings.SimilarityBoost, 0.5)
+	storage2.SetIfMissing(&s.GenerationSettings.VoiceSettings.Stability, 0.5)
+	storage2.SetIfMissing(&s.GenerationSettings.VoiceSettings.UseSpeakerBoost, true)
 }
 
 func (s *Settings) LoadFromProfile(c *gin.Context, profileId string) error {
 	p := &profile.UserProfile{Id: profileId}
-	if err := storage.LoadFields(c.Request.Context(), p); err != nil {
+	if err := storage2.LoadFields(c.Request.Context(), p); err != nil {
 		return err
 	}
 	sp := p.SettingsProfile
@@ -82,7 +83,7 @@ func (s *Settings) LoadFromProfile(c *gin.Context, profileId string) error {
 
 func (s *Settings) StoreToProfile(c *gin.Context, profileId string) error {
 	p := &profile.UserProfile{Id: profileId}
-	if err := storage.LoadFields(c.Request.Context(), p); err != nil {
+	if err := storage2.LoadFields(c.Request.Context(), p); err != nil {
 		return err
 	}
 	sp := p.SettingsProfile
@@ -116,5 +117,5 @@ func (s *Settings) StoreToProfile(c *gin.Context, profileId string) error {
 	eTag := fmt.Sprintf("%02x", md5.Sum(js))
 	sp.ETag = eTag
 	p.SettingsETag = eTag
-	return storage.SaveFields(c.Request.Context(), p)
+	return storage2.SaveFields(c.Request.Context(), p)
 }

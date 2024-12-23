@@ -4,77 +4,40 @@
  * GNU Affero General Public License v3, reproduced in the LICENSE file.
  */
 
-package console
+package profile
 
 import (
 	"fmt"
 	"net/http"
 
+	"github.com/whisper-project/server.golang/common/middleware"
+
+	"github.com/whisper-project/server.golang/common/auth"
+
+	"github.com/whisper-project/server.golang/common/storage"
+
 	"github.com/google/uuid"
-	"github.com/whisper-project/server.golang/internal/middleware"
-	"github.com/whisper-project/server.golang/internal/storage"
 	"go.uber.org/zap"
 
 	"github.com/gin-gonic/gin"
 )
 
-type StoredMap string
-
-func (s StoredMap) StoragePrefix() string {
-	return "map:"
-}
-
-func (s StoredMap) StorageId() string {
-	return string(s)
-}
-
-var (
-	EmailProfileMap  = StoredMap("email_profile_map")
-	ClientProfileMap = StoredMap("client_profile_map")
-)
-
-type Profile struct {
-	Id        string `redis:"id"`
-	EmailHash string `redis:"emailHash"`
-	Password  string `redis:"password"`
-}
-
-func (p *Profile) StoragePrefix() string {
-	return "profile:"
-}
-
-func (p *Profile) StorageId() string {
-	if p == nil {
-		return ""
-	}
-	return p.Id
-}
-
-func (p *Profile) SetStorageId(id string) error {
-	if p == nil {
-		return fmt.Errorf("can't set storage id of nil struct")
-	}
-	p.Id = id
-	return nil
-}
-
-func (p *Profile) Copy() storage.StructPointer {
-	if p == nil {
+func AuthenticateRequest(c *gin.Context, profileId string) *Profile {
+	if profileId == "" {
+		middleware.CtxLog(c).Info("missing profileId in request")
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": "missing profileId"})
 		return nil
 	}
-	n := new(Profile)
-	*n = *p
-	return n
-}
-
-func (p *Profile) Downgrade(in any) (storage.StructPointer, error) {
-	if o, ok := in.(Profile); ok {
-		return &o, nil
+	p := &Profile{Id: profileId}
+	if err := storage.LoadFields(c.Request.Context(), p); err != nil {
+		middleware.CtxLog(c).Error("Load Fields failure", zap.String("profileId", profileId), zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return nil
 	}
-	if o, ok := in.(*Profile); ok {
-		return o, nil
+	if auth.AuthenticateRequest(c, profileId, p.Secret) {
+		return p
 	}
-	return nil, fmt.Errorf("not a %T: %#v", p, in)
+	return nil
 }
 
 func NewProfile(c *gin.Context, hashedEmail string) (*Profile, error) {
@@ -82,7 +45,7 @@ func NewProfile(c *gin.Context, hashedEmail string) (*Profile, error) {
 	p := &Profile{
 		Id:        uuid.NewString(),
 		EmailHash: hashedEmail,
-		Password:  uuid.NewString(),
+		Secret:    uuid.NewString(),
 	}
 	if err := storage.SaveFields(ctx, p); err != nil {
 		middleware.CtxLog(c).Error("Save Fields failure",
@@ -94,20 +57,10 @@ func NewProfile(c *gin.Context, hashedEmail string) (*Profile, error) {
 			zap.String("email", hashedEmail), zap.String("profileId", p.Id), zap.Error(err))
 		return nil, err
 	}
-	if _, err := AddWhisperConversation(c, p.Id, "Conversation-1"); err != nil {
+	if _, err := AddWhisperConversation(c, p.Id, "Conversation 1"); err != nil {
 		return nil, err
 	}
 	return p, nil
-}
-
-type WhisperConversationMap string
-
-func (p WhisperConversationMap) StoragePrefix() string {
-	return "whisper-conversations"
-}
-
-func (p WhisperConversationMap) StorageId() string {
-	return string(p)
 }
 
 func GetProfileWhisperConversations(c *gin.Context) {
@@ -132,8 +85,14 @@ func GetProfileWhisperConversations(c *gin.Context) {
 	c.JSON(http.StatusOK, cMap)
 }
 
-func GetProfileWhisperConversation(c *gin.Context) {
+func GetProfileWhisperConversationId(c *gin.Context) {
 	profileId := c.Param("profileId")
+	name := c.Param("name")
+	if name == "" {
+		middleware.CtxLog(c).Info("empty whisper conversation name", zap.String("profileId", profileId))
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": "empty whisper conversation name"})
+		return
+	}
 	if AuthenticateRequest(c, profileId) == nil {
 		return
 	}
@@ -178,6 +137,7 @@ func PostProfileWhisperConversation(c *gin.Context) {
 		middleware.CtxLog(c).Info("whisper conversation already exists",
 			zap.String("profileId", profileId), zap.String("name", name))
 		c.JSON(http.StatusConflict, gin.H{"status": "error", "error": "whisper conversation already exists"})
+		return
 	}
 	conversationId, err := AddWhisperConversation(c, profileId, name)
 	if err != nil {
@@ -188,6 +148,36 @@ func PostProfileWhisperConversation(c *gin.Context) {
 		zap.String("profileId", profileId), zap.String("clientId", c.GetHeader("X-Client-Id")),
 		zap.String("name", c.Param("name")), zap.String("conversationId", conversationId))
 	c.JSON(http.StatusCreated, conversationId)
+}
+
+func DeleteProfileWhisperConversation(c *gin.Context) {
+	profileId := c.Param("profileId")
+	if AuthenticateRequest(c, profileId) == nil {
+		return
+	}
+	name := c.Param("name")
+	if name == "" {
+		middleware.CtxLog(c).Error("empty whisper conversation name")
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": "empty whisper conversation name"})
+		return
+	}
+	conversationId, err := WhisperConversation(c, profileId, name)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": err.Error()})
+		return
+	}
+	if conversationId == "" {
+		middleware.CtxLog(c).Info("whisper conversation not found",
+			zap.String("profileId", profileId), zap.String("name", name))
+		c.JSON(http.StatusNotFound,
+			gin.H{"status": "error", "error": fmt.Sprintf("whisper conversation %q not found", name)})
+		return
+	}
+	if err := DeleteWhisperConversation(c, profileId, name); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": err.Error()})
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 func WhisperConversation(c *gin.Context, profileId string, name string) (string, error) {
@@ -224,6 +214,16 @@ func AddWhisperConversation(c *gin.Context, profileId string, name string) (stri
 		return "", err
 	}
 	return conversationId, nil
+}
+
+func DeleteWhisperConversation(c *gin.Context, profileId string, name string) error {
+	key := WhisperConversationMap(profileId)
+	if err := storage.MapRemove(c.Request.Context(), key, name); err != nil {
+		middleware.CtxLog(c).Error("storage error on whisper conversation creation",
+			zap.String("profileId", profileId), zap.String("name", name), zap.Error(err))
+		return err
+	}
+	return nil
 }
 
 func EmailProfile(c *gin.Context, hashedEmail string) (string, error) {

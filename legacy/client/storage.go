@@ -9,7 +9,7 @@ package client
 import (
 	"fmt"
 
-	"github.com/whisper-project/server.golang/internal/storage"
+	"github.com/whisper-project/server.golang/common/storage"
 )
 
 type Data struct {

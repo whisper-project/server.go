@@ -14,25 +14,33 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/whisper-project/server.golang/common/middleware"
+
+	"github.com/whisper-project/server.golang/common/profile"
+
+	"github.com/whisper-project/server.golang/common/storage"
+
 	"gopkg.in/gomail.v2"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-
-	"github.com/whisper-project/server.golang/internal/middleware"
-	"github.com/whisper-project/server.golang/internal/storage"
-
-	client "github.com/whisper-project/client.golang/api"
 )
 
 func PostPrefsHandler(c *gin.Context) {
-	var req client.Prefs
-	if err := c.ShouldBindJSON(&req); err != nil {
+	clientId := c.GetHeader("X-Client-Id")
+	if clientId == "" {
+		middleware.CtxLog(c).Info("Missing X-Client-Id header")
+		c.JSON(400, gin.H{"error": "Invalid request"})
+		return
+	}
+	var emailHash string
+	if err := c.ShouldBindJSON(&emailHash); err != nil {
+		middleware.CtxLog(c).Info("Invalid body", zap.Error(err))
 		c.JSON(400, gin.H{"error": "Invalid request"})
 		return
 	}
 	// Look for a profile that matches the email
-	profileId, err := EmailProfile(c, req.ProfileEmail)
+	profileId, err := profile.EmailProfile(c, emailHash)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -42,44 +50,42 @@ func PostPrefsHandler(c *gin.Context) {
 		if c.GetHeader("Authorization") == "" {
 			// User needs to provide password to authorize against this profile, so challenge with it
 			middleware.CtxLog(c).Info("Profile exists, need authorization", zap.String("profileId", profileId))
-			req.ProfileId = profileId
-			c.JSON(http.StatusUnauthorized, req)
+			c.JSON(http.StatusUnauthorized, profileId)
 			return
 		}
 		// Check the user's authorization
-		p := AuthenticateRequest(c, profileId)
+		p := profile.AuthenticateRequest(c, profileId)
 		if p == nil {
 			return
 		}
 		// they are authorized, so remember them against this client
-		if err = SetClientProfile(c, req.ClientId, p.Id); err != nil {
+		if err = profile.SetClientProfile(c, clientId, p.Id); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		middleware.CtxLog(c).Info("Authenticated profile",
-			zap.String("email", p.EmailHash), zap.String("profileId", p.Id), zap.String("clientId", req.ClientId))
+			zap.String("email", p.EmailHash), zap.String("profileId", p.Id), zap.String("clientId", clientId))
 		c.Status(http.StatusNoContent)
 		return
 	}
 	// This is a new email, generate a profile for it, and record it against email and client
-	p, err := NewProfile(c, req.ProfileEmail)
+	p, err := profile.NewProfile(c, emailHash)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	if err = SetEmailProfile(c, p.EmailHash, p.Id); err != nil {
+	if err = profile.SetEmailProfile(c, p.EmailHash, p.Id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	if err = SetClientProfile(c, req.ClientId, p.Id); err != nil {
+	if err = profile.SetClientProfile(c, clientId, p.Id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	middleware.CtxLog(c).Info("Created new profile",
-		zap.String("email", p.EmailHash), zap.String("profileId", p.Id), zap.String("clientId", req.ClientId))
-	req.ProfileId = p.Id
-	req.ProfileSecret = p.Password
-	c.JSON(http.StatusCreated, req)
+		zap.String("email", p.EmailHash), zap.String("profileId", p.Id), zap.String("clientId", clientId))
+	response := map[string]string{"id": p.Id, "secret": p.Secret}
+	c.JSON(http.StatusCreated, response)
 }
 
 func PostRequestEmailHandler(c *gin.Context) {
@@ -94,7 +100,7 @@ func PostRequestEmailHandler(c *gin.Context) {
 
 	// Look for a profile that matches the email
 	ctx := c.Request.Context()
-	profileId, err := storage.MapGet(ctx, EmailProfileMap, hash)
+	profileId, err := storage.MapGet(ctx, profile.EmailProfileMap, hash)
 	if err != nil {
 		middleware.CtxLog(c).Error("Map failure", zap.String("email", hash), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -107,13 +113,13 @@ func PostRequestEmailHandler(c *gin.Context) {
 		return
 	}
 	// otherwise, load the profile, and send email with password
-	p := &Profile{Id: profileId}
+	p := &profile.Profile{Id: profileId}
 	if err := storage.LoadFields(ctx, p); err != nil {
 		middleware.CtxLog(c).Error("Load Fields failure", zap.String("profileId", profileId), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
-	middleware.CtxLog(c).Info("Sending email", zap.String("profileId", p.Id), zap.String("password", p.Password))
-	if err := sendMail(email, p.Password); err != nil {
+	middleware.CtxLog(c).Info("Sending email", zap.String("profileId", p.Id), zap.String("password", p.Secret))
+	if err := sendMail(email, p.Secret); err != nil {
 		middleware.CtxLog(c).Error("Send email failure", zap.String("profileId", p.Id), zap.Error(err))
 	}
 	c.Status(http.StatusNoContent)

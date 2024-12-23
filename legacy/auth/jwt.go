@@ -13,11 +13,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/whisper-project/server.golang/common/middleware"
+
+	"github.com/whisper-project/server.golang/common/storage"
+
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-
-	"github.com/whisper-project/server.golang/internal/middleware"
-	"github.com/whisper-project/server.golang/internal/storage"
 )
 
 func CreateApnsJwt(c *gin.Context) (string, error) {

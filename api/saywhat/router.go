@@ -8,8 +8,7 @@ package saywhat
 
 import (
 	"github.com/gin-gonic/gin"
-
-	"github.com/whisper-project/server.golang/internal/middleware"
+	"github.com/whisper-project/server.golang/common/middleware"
 )
 
 func AddRoutes(r *gin.RouterGroup) {
@@ -22,5 +21,5 @@ func settingsNotImplemented(c *gin.Context) {
 	profileId := c.Param("profileId")
 	method := c.Request.Method
 	middleware.CtxLogS(c).Errorw("Not Implemented: %s of settings %s", method, profileId)
-	c.JSON(500, gin.H{"status": "error", "error": "not implemented: internal is under construction"})
+	c.JSON(500, gin.H{"status": "error", "error": "not implemented: server is under construction"})
 }

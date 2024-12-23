@@ -10,10 +10,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/whisper-project/server.golang/common/storage"
+
 	"github.com/go-test/deep"
 
-	"github.com/whisper-project/server.golang/internal/profile"
-	"github.com/whisper-project/server.golang/internal/storage"
+	"github.com/whisper-project/server.golang/legacy/profile"
 )
 
 func TestLoadAndCopy(t *testing.T) {

@@ -41,6 +41,20 @@ type StructPointer interface {
 	Downgrade(any) (StructPointer, error)
 }
 
+type StructPointerNotFound string
+
+func (e StructPointerNotFound) Error() string {
+	return fmt.Sprintf("no struct at key: %s", string(e))
+}
+
+func (e StructPointerNotFound) Is(err error) bool {
+	//goland:noinspection GoTypeAssertionOnErrors
+	_, ok := err.(StructPointerNotFound)
+	return ok
+}
+
+var StructPointerNotFoundError = StructPointerNotFound("")
+
 func LoadFields[T StructPointer](ctx context.Context, obj T) error {
 	if obj.StorageId() == "" {
 		return fmt.Errorf("storable has no ID")
@@ -52,7 +66,7 @@ func LoadFields[T StructPointer](ctx context.Context, obj T) error {
 		return fmt.Errorf("failed to fetch fields of stored object %s: %v", key, err)
 	}
 	if len(res.Val()) == 0 {
-		return fmt.Errorf("stored object %s has no fields", key)
+		return StructPointerNotFound(key)
 	}
 	if err := res.Scan(obj); err != nil {
 		return fmt.Errorf("stored object %s cannot be read: %v", key, err)

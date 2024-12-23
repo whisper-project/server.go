@@ -11,10 +11,11 @@ import (
 	"log"
 	"strings"
 
+	storage2 "github.com/whisper-project/server.golang/common/storage"
+
 	"github.com/spf13/cobra"
 
-	"github.com/whisper-project/server.golang/internal/internaltest"
-	"github.com/whisper-project/server.golang/internal/storage"
+	"github.com/whisper-project/server.golang/legacy/internaltest"
 )
 
 // testCmd represents the test command
@@ -27,11 +28,11 @@ Data is always loaded last.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.SetFlags(0)
 		env, _ := cmd.Flags().GetString("env")
-		err := storage.PushConfig(env)
+		err := storage2.PushConfig(env)
 		if err != nil {
 			panic(err)
 		}
-		log.Printf("Operating in the %s environment.", storage.GetConfig().Name)
+		log.Printf("Operating in the %s environment.", storage2.GetConfig().Name)
 		var cnt int
 		if cnt, _ = cmd.Flags().GetCount("clear"); cnt > 0 {
 			clearDb()
@@ -60,7 +61,7 @@ func init() {
 
 func clearDb() {
 	ctx := context.Background()
-	db, prefix := storage.GetDb()
+	db, prefix := storage2.GetDb()
 	log.Printf("Deleting all keys with prefix %q...", prefix)
 	iter := db.Scan(ctx, 0, prefix+"*", 20).Iterator()
 	for iter.Next(ctx) {
@@ -71,7 +72,7 @@ func clearDb() {
 
 func loadKnownTestData() {
 	log.Printf("Loading test data...")
-	som, err := storage.LoadObjectsFromStream(strings.NewReader(knownTestData))
+	som, err := storage2.LoadObjectsFromStream(strings.NewReader(knownTestData))
 	if err != nil {
 		panic(err)
 	}

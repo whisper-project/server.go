@@ -10,13 +10,15 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/whisper-project/server.golang/common/middleware"
+
+	"github.com/whisper-project/server.golang/common/storage"
+
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 
 	"github.com/whisper-project/server.golang/api/console"
 	"github.com/whisper-project/server.golang/api/saywhat"
-	"github.com/whisper-project/server.golang/internal/middleware"
-	"github.com/whisper-project/server.golang/internal/storage"
 )
 
 // serveCmd represents the serve command

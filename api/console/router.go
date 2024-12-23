@@ -8,11 +8,14 @@ package console
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/whisper-project/server.golang/common/profile"
 )
 
 func AddRoutes(r *gin.RouterGroup) {
 	r.POST("/preferences", PostPrefsHandler)
-	r.GET("/profiles/:profileId/whisper-conversations", GetProfileWhisperConversations)
-	r.POST("/profiles/:profileId/whisper-conversations", PostProfileWhisperConversation)
 	r.POST("/request-email", PostRequestEmailHandler)
+	r.GET("/profiles/:profileId/whisper-conversations", profile.GetProfileWhisperConversations)
+	r.POST("/profiles/:profileId/whisper-conversations", profile.PostProfileWhisperConversation)
+	r.GET("/profiles/:profileId/whisper-conversations/:name", profile.GetProfileWhisperConversationId)
+	r.DELETE("/profiles/:profileId/whisper-conversations/:name", profile.DeleteProfileWhisperConversation)
 }

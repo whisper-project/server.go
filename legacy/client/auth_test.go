@@ -10,10 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/whisper-project/server.golang/common/middleware"
 
-	"github.com/whisper-project/server.golang/internal/middleware"
-	"github.com/whisper-project/server.golang/internal/storage"
+	"github.com/whisper-project/server.golang/common/storage"
+
+	"github.com/google/uuid"
 )
 
 func TestHasAuthChanged(t *testing.T) {

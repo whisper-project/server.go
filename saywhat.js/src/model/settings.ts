@@ -325,7 +325,7 @@ export class SettingsStore {
             return
         }
         if (resp.status == 304 || resp.status == 412) {
-            // no change on internal side
+            // no change on server side
             SettingsStore.profile.serverETag = SettingsStore.eTag
             return
         }
