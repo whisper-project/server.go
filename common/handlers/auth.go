@@ -4,14 +4,17 @@
  * GNU Affero General Public License v3, reproduced in the LICENSE file.
  */
 
-package auth
+package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/whisper-project/server.golang/common/middleware"
+	"github.com/whisper-project/server.golang/common/platform"
+	"github.com/whisper-project/server.golang/common/storage"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -19,36 +22,59 @@ import (
 	"go.uber.org/zap"
 )
 
-func AuthenticateRequest(c *gin.Context, profileId, profilePassword string) bool {
+func AuthenticateRequest(c *gin.Context) *storage.Profile {
 	clientId := c.GetHeader("X-Client-Id")
-	if clientId == "" {
-		middleware.CtxLog(c).Info("missing clientId in request")
-		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": "missing clientId"})
-		return false
+	profileId := c.GetHeader("X-Profile-Id")
+	if clientId == "" || profileId == "" {
+		middleware.CtxLog(c).Info("missing identification header",
+			zap.String("X-Client-Id", clientId), zap.String("X-Profile-Id", profileId))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing identification header"})
+		return nil
 	}
 	authToken := c.GetHeader("Authorization")
 	if authToken == "" {
-		middleware.CtxLog(c).Info("missing Authorization header")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authorization header"})
-		return false
+		middleware.CtxLog(c).Info("Profile exists, need authorization", zap.String("profileId", profileId))
+		c.Writer.Header().Set("WWW-Authenticate", fmt.Sprintf(`Bearer realm="%s"`, profileId))
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Provide authorization token"})
+		return nil
 	} else if len(authToken) > len("Bearer ") {
 		authToken = authToken[len("Bearer "):]
 	} else {
 		middleware.CtxLog(c).Info("invalid Authorization header", zap.String("header", c.GetHeader("Authorization")))
-		c.JSON(http.StatusForbidden, gin.H{"error": "invalid authorization header"})
-		return false
+		c.JSON(http.StatusForbidden, gin.H{"error": "invalid bearer token"})
+		return nil
 	}
-	key, err := uuid.Parse(profilePassword)
+	p := &storage.Profile{Id: profileId}
+	if err := platform.LoadFields(c.Request.Context(), p); err != nil {
+		if errors.Is(err, platform.StructPointerNotFoundError) {
+			middleware.CtxLog(c).Info("no profile found for authentication",
+				zap.String("profileId", profileId))
+			c.JSON(http.StatusForbidden, gin.H{"error": "profile not found"})
+		} else {
+			middleware.CtxLog(c).Error("Load Fields failure during authentication",
+				zap.String("profileId", profileId), zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "database failure"})
+		}
+		return nil
+	}
+	if authenticateJwt(c, authToken, clientId, profileId, p.Secret) {
+		return p
+	}
+	return nil
+}
+
+func authenticateJwt(c *gin.Context, bearerToken, clientId, profileId, secret string) bool {
+	key, err := uuid.Parse(secret)
 	if err != nil {
-		middleware.CtxLog(c).Error("Profile password is not a UUID",
-			zap.String("profileId", profileId), zap.String("profilePassword", profilePassword), zap.Error(err))
+		middleware.CtxLog(c).Error("Secret is not a UUID",
+			zap.String("profileId", profileId), zap.String("secret", secret), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "server data is corrupt - please report a bug!"})
 		return false
 	}
 	keyBytes, err := key.MarshalBinary()
 	if err != nil {
 		middleware.CtxLog(c).Error("Marshal UUID failure",
-			zap.String("profileId", profileId), zap.String("profilePassword", profilePassword), zap.Error(err))
+			zap.String("profileId", profileId), zap.String("secret", secret), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "server behavior is corrupt - please report a bug!"})
 		return false
 	}
@@ -59,7 +85,7 @@ func AuthenticateRequest(c *gin.Context, profileId, profilePassword string) bool
 		}
 		return keyBytes, nil
 	}
-	token, err := jwt.Parse(authToken, validator, jwt.WithValidMethods([]string{"HS256", "HS384", "HS512"}))
+	token, err := jwt.Parse(bearerToken, validator, jwt.WithValidMethods([]string{"HS256", "HS384", "HS512"}))
 	if err != nil {
 		middleware.CtxLog(c).Info("Invalid bearer token", zap.String("profileId", profileId), zap.Error(err))
 		c.JSON(http.StatusForbidden, gin.H{"error": "invalid bearer token"})

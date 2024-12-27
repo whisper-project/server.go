@@ -9,7 +9,7 @@ package internaltest
 import (
 	"context"
 
-	storage2 "github.com/whisper-project/server.golang/common/storage"
+	storage2 "github.com/whisper-project/server.golang/common/platform"
 
 	"github.com/google/uuid"
 )

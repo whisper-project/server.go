@@ -11,7 +11,7 @@ import (
 	"log"
 	"strings"
 
-	storage2 "github.com/whisper-project/server.golang/common/storage"
+	storage2 "github.com/whisper-project/server.golang/common/platform"
 
 	"github.com/spf13/cobra"
 

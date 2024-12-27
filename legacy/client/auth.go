@@ -13,7 +13,7 @@ import (
 
 	"github.com/whisper-project/server.golang/common/middleware"
 
-	"github.com/whisper-project/server.golang/common/storage"
+	"github.com/whisper-project/server.golang/common/platform"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -24,7 +24,7 @@ import (
 // See [RefreshSecret] for more about secret rotation.
 func (d *Data) HasAuthChanged(c *gin.Context) (bool, string) {
 	existing := &Data{Id: d.Id}
-	if err := storage.LoadFields(c.Request.Context(), existing); err != nil {
+	if err := platform.LoadFields(c.Request.Context(), existing); err != nil {
 		return true, "APNS token from new"
 	}
 	if existing.LastSecret != d.LastSecret {
@@ -66,7 +66,7 @@ func (d *Data) RefreshSecret(c *gin.Context, force bool) (bool, error) {
 			d.SecretDate = 0
 		}
 		d.PushId = uuid.New().String()
-		if err := storage.SaveFields(c.Request.Context(), d); err != nil {
+		if err := platform.SaveFields(c.Request.Context(), d); err != nil {
 			return false, err
 		}
 		return true, nil

@@ -12,7 +12,7 @@ import (
 
 	"github.com/whisper-project/server.golang/common/middleware"
 
-	"github.com/whisper-project/server.golang/common/storage"
+	"github.com/whisper-project/server.golang/common/platform"
 
 	"github.com/google/uuid"
 )
@@ -24,7 +24,7 @@ func TestHasAuthChanged(t *testing.T) {
 	if yes != true || why != "APNS token from new" {
 		t.Errorf("HasAuthChanged() = %v, %q; want %v, %q", yes, why, true, "APNS token from new")
 	}
-	if err := storage.SaveFields(c.Request.Context(), &received); err != nil {
+	if err := platform.SaveFields(c.Request.Context(), &received); err != nil {
 		t.Errorf("Failed to save stored data for client %q: %v", received.Id, err)
 	}
 	yes, why = received.HasAuthChanged(c)
@@ -36,7 +36,7 @@ func TestHasAuthChanged(t *testing.T) {
 	if yes != true || why != "unconfirmed secret from existing" {
 		t.Errorf("HasAuthChanged() = %v, %q; want %v, %q", yes, why, true, "unconfirmed secret from existing")
 	}
-	if err := storage.SaveFields(c.Request.Context(), &received); err != nil {
+	if err := platform.SaveFields(c.Request.Context(), &received); err != nil {
 		t.Errorf("Failed to save stored data for client %q: %v", received.Id, err)
 	}
 	received.Token = "token"
@@ -44,7 +44,7 @@ func TestHasAuthChanged(t *testing.T) {
 	if yes != true || why != "new APNS token from existing" {
 		t.Errorf("HasAuthChanged() = %v, %q; want %v, %q", yes, why, true, "new APNS token from existing")
 	}
-	if err := storage.SaveFields(c.Request.Context(), &received); err != nil {
+	if err := platform.SaveFields(c.Request.Context(), &received); err != nil {
 		t.Errorf("Failed to save stored data for client %q: %v", received.Id, err)
 	}
 	received.AppInfo = "app info"
@@ -52,10 +52,10 @@ func TestHasAuthChanged(t *testing.T) {
 	if yes != true || why != "new build data from existing" {
 		t.Errorf("HasAuthChanged() = %v, %q; want %v, %q", yes, why, true, "new build data from existing")
 	}
-	if err := storage.SaveFields(c.Request.Context(), &received); err != nil {
+	if err := platform.SaveFields(c.Request.Context(), &received); err != nil {
 		t.Errorf("Failed to save stored data for client %q: %v", received.Id, err)
 	}
-	if err := storage.DeleteStorage(c.Request.Context(), &received); err != nil {
+	if err := platform.DeleteStorage(c.Request.Context(), &received); err != nil {
 		t.Errorf("Failed to delete stored data for client %q: %v", received.Id, err)
 	}
 }
@@ -125,7 +125,7 @@ func TestRefreshSecret(t *testing.T) {
 	if date4 != date3 {
 		t.Errorf("After second refresh: date differs: was %d, is now %d", date1, date2)
 	}
-	if err := storage.DeleteStorage(c.Request.Context(), &received); err != nil {
+	if err := platform.DeleteStorage(c.Request.Context(), &received); err != nil {
 		t.Errorf("Failed to delete stored data for client %q: %v", received.Id, err)
 	}
 }

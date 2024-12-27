@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/whisper-project/server.golang/common/storage"
+	"github.com/whisper-project/server.golang/common/platform"
 
 	"github.com/go-test/deep"
 
@@ -38,7 +38,7 @@ func TestClientStorableInterfaces(t *testing.T) {
 		t.Errorf("StorageId is wrong: %s != %s", c.StorageId(), "before")
 	}
 	if err := c.SetStorageId("after"); err != nil {
-		t.Errorf("Failed to set storage id: %v", err)
+		t.Errorf("Failed to set platform id: %v", err)
 	}
 	if c.StorageId() != "after" {
 		t.Errorf("StorageId is wrong: %s != %s", c.StorageId(), "after")
@@ -64,7 +64,7 @@ func TestClientStorableInterfaces(t *testing.T) {
 
 func TestClientJsonMarshaling(t *testing.T) {
 	c1 := Data{Id: internaltest.KnownClientId}
-	if err := storage.LoadFields(context.Background(), &c1); err != nil {
+	if err := platform.LoadFields(context.Background(), &c1); err != nil {
 		t.Fatal(err)
 	}
 	bytes, err := json.Marshal(c1)
@@ -82,7 +82,7 @@ func TestClientJsonMarshaling(t *testing.T) {
 
 func TestTransferClientData(t *testing.T) {
 	c1 := Data{Id: internaltest.KnownClientId}
-	if err := storage.LoadFields(context.Background(), &c1); err != nil {
+	if err := platform.LoadFields(context.Background(), &c1); err != nil {
 		t.Fatal(err)
 	}
 	if c1.UserName != internaltest.KnownClientUserName {
@@ -90,18 +90,18 @@ func TestTransferClientData(t *testing.T) {
 	}
 	c2 := c1
 	c2.Id = internaltest.NewTestId()
-	if err := storage.SaveFields(context.Background(), &c2); err != nil {
+	if err := platform.SaveFields(context.Background(), &c2); err != nil {
 		t.Fatal(err)
 	}
 	c3 := Data{Id: c2.Id}
-	if err := storage.LoadFields(context.Background(), &c3); err != nil {
+	if err := platform.LoadFields(context.Background(), &c3); err != nil {
 		t.Fatal(err)
 	}
 	c3.Id = c1.Id
 	if diff := deep.Equal(c1, c3); diff != nil {
 		t.Error(diff)
 	}
-	if err := storage.DeleteStorage(context.Background(), &c2); err != nil {
+	if err := platform.DeleteStorage(context.Background(), &c2); err != nil {
 		t.Fatalf("Failed to delete transfered client")
 	}
 }

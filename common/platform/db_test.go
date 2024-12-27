@@ -4,7 +4,7 @@
  * GNU Affero General Public License v3, reproduced in the LICENSE file.
  */
 
-package storage
+package platform
 
 import (
 	"strings"

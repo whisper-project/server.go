@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/whisper-project/server.golang/common/storage"
+	"github.com/whisper-project/server.golang/common/platform"
 
 	"github.com/go-test/deep"
 
@@ -38,7 +38,7 @@ func TestUserProfileStorableInterfaces(t *testing.T) {
 		t.Errorf("StorageId is wrong: %s != %s", p.StorageId(), "before")
 	}
 	if err := p.SetStorageId("after"); err != nil {
-		t.Errorf("Failed to set storage id: %v", err)
+		t.Errorf("Failed to set platform id: %v", err)
 	}
 	if p.StorageId() != "after" {
 		t.Errorf("StorageId is wrong: %s != %s", p.StorageId(), "after")
@@ -64,7 +64,7 @@ func TestUserProfileStorableInterfaces(t *testing.T) {
 
 func TestWhisperProfileJsonMarshaling(t *testing.T) {
 	p1 := UserProfile{Id: internaltest.KnownUserId}
-	if err := storage.LoadFields(context.Background(), &p1); err != nil {
+	if err := platform.LoadFields(context.Background(), &p1); err != nil {
 		t.Fatal(err)
 	}
 	bytes, err := json.Marshal(p1.WhisperProfile)
@@ -82,7 +82,7 @@ func TestWhisperProfileJsonMarshaling(t *testing.T) {
 
 func TestUserProfileJsonMarshaling(t *testing.T) {
 	p1 := UserProfile{Id: internaltest.KnownUserId}
-	if err := storage.LoadFields(context.Background(), &p1); err != nil {
+	if err := platform.LoadFields(context.Background(), &p1); err != nil {
 		t.Fatal(err)
 	}
 	bytes, err := json.Marshal(p1)
@@ -100,7 +100,7 @@ func TestUserProfileJsonMarshaling(t *testing.T) {
 
 func TestTransferProfileData(t *testing.T) {
 	p1 := UserProfile{Id: internaltest.KnownUserId}
-	if err := storage.LoadFields(context.Background(), &p1); err != nil {
+	if err := platform.LoadFields(context.Background(), &p1); err != nil {
 		t.Fatal(err)
 	}
 	if p1.Name != internaltest.KnownUserName {
@@ -108,18 +108,18 @@ func TestTransferProfileData(t *testing.T) {
 	}
 	p2 := p1
 	p2.Id = internaltest.NewTestId()
-	if err := storage.SaveFields(context.Background(), &p2); err != nil {
+	if err := platform.SaveFields(context.Background(), &p2); err != nil {
 		t.Fatal(err)
 	}
 	p3 := UserProfile{Id: p2.Id}
-	if err := storage.LoadFields(context.Background(), &p3); err != nil {
+	if err := platform.LoadFields(context.Background(), &p3); err != nil {
 		t.Fatal(err)
 	}
 	p3.Id = p1.Id
 	if diff := deep.Equal(p1, p3); diff != nil {
 		t.Error(diff)
 	}
-	if err := storage.DeleteStorage(context.Background(), &p2); err != nil {
+	if err := platform.DeleteStorage(context.Background(), &p2); err != nil {
 		t.Fatalf("Failed to delete transfered profile")
 	}
 }

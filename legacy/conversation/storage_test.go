@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/whisper-project/server.golang/common/storage"
+	"github.com/whisper-project/server.golang/common/platform"
 
 	"github.com/go-test/deep"
 	"github.com/google/uuid"
@@ -40,7 +40,7 @@ func TestConversationStorableInterfaces(t *testing.T) {
 		t.Errorf("StorageId is wrong: %s != %s", c.StorageId(), "before")
 	}
 	if err := c.SetStorageId("after"); err != nil {
-		t.Errorf("Failed to set storage id: %v", err)
+		t.Errorf("Failed to set platform id: %v", err)
 	}
 	if c.StorageId() != "after" {
 		t.Errorf("StorageId is wrong: %s != %s", c.StorageId(), "after")
@@ -66,7 +66,7 @@ func TestConversationStorableInterfaces(t *testing.T) {
 
 func TestConversationJsonMarshaling(t *testing.T) {
 	c1 := Data{Id: internaltest.KnownConversationId}
-	if err := storage.LoadFields(context.Background(), &c1); err != nil {
+	if err := platform.LoadFields(context.Background(), &c1); err != nil {
 		t.Fatal(err)
 	}
 	bytes, err := json.Marshal(c1)
@@ -84,7 +84,7 @@ func TestConversationJsonMarshaling(t *testing.T) {
 
 func TestTransferConversationData(t *testing.T) {
 	c1 := Data{Id: internaltest.KnownConversationId}
-	if err := storage.LoadFields(context.Background(), &c1); err != nil {
+	if err := platform.LoadFields(context.Background(), &c1); err != nil {
 		t.Fatal(err)
 	}
 	if c1.Name != internaltest.KnownConversationName {
@@ -92,18 +92,18 @@ func TestTransferConversationData(t *testing.T) {
 	}
 	c2 := c1
 	c2.Id = internaltest.NewTestId()
-	if err := storage.SaveFields(context.Background(), &c2); err != nil {
+	if err := platform.SaveFields(context.Background(), &c2); err != nil {
 		t.Fatal(err)
 	}
 	c3 := Data{Id: c2.Id}
-	if err := storage.LoadFields(context.Background(), &c3); err != nil {
+	if err := platform.LoadFields(context.Background(), &c3); err != nil {
 		t.Fatal(err)
 	}
 	c3.Id = c1.Id
 	if diff := deep.Equal(c1, c3); diff != nil {
 		t.Error(diff)
 	}
-	if err := storage.DeleteStorage(context.Background(), &c2); err != nil {
+	if err := platform.DeleteStorage(context.Background(), &c2); err != nil {
 		t.Fatalf("Failed to delete transfered conversation")
 	}
 }
@@ -128,7 +128,7 @@ func TestStateStorableInterfaces(t *testing.T) {
 		t.Errorf("StorageId is wrong: %s != %s", s.StorageId(), "before")
 	}
 	if err := s.SetStorageId("after"); err != nil {
-		t.Errorf("Failed to set storage id: %v", err)
+		t.Errorf("Failed to set platform id: %v", err)
 	}
 	if s.StorageId() != "after" {
 		t.Errorf("StorageId is wrong: %s != %s", s.StorageId(), "after")
@@ -154,7 +154,7 @@ func TestStateStorableInterfaces(t *testing.T) {
 
 func TestStateJsonMarshaling(t *testing.T) {
 	s1 := State{Id: internaltest.KnownStateId}
-	if err := storage.LoadFields(context.Background(), &s1); err != nil {
+	if err := platform.LoadFields(context.Background(), &s1); err != nil {
 		t.Fatal(err)
 	}
 	bytes, err := json.Marshal(s1)
@@ -172,7 +172,7 @@ func TestStateJsonMarshaling(t *testing.T) {
 
 func TestTransferStateData(t *testing.T) {
 	s1 := State{Id: internaltest.KnownStateId}
-	if err := storage.LoadFields(context.Background(), &s1); err != nil {
+	if err := platform.LoadFields(context.Background(), &s1); err != nil {
 		t.Fatal(err)
 	}
 	if s1.ConversationId != internaltest.KnownConversationId {
@@ -184,18 +184,18 @@ func TestTransferStateData(t *testing.T) {
 	} else {
 		s2.Id = strings.ToUpper(id.String())
 	}
-	if err := storage.SaveFields(context.Background(), &s2); err != nil {
+	if err := platform.SaveFields(context.Background(), &s2); err != nil {
 		t.Fatal(err)
 	}
 	s3 := State{Id: s2.Id}
-	if err := storage.LoadFields(context.Background(), &s3); err != nil {
+	if err := platform.LoadFields(context.Background(), &s3); err != nil {
 		t.Fatal(err)
 	}
 	s3.Id = s1.Id
 	if diff := deep.Equal(s1, s3); diff != nil {
 		t.Error(diff)
 	}
-	if err := storage.DeleteStorage(context.Background(), &s2); err != nil {
+	if err := platform.DeleteStorage(context.Background(), &s2); err != nil {
 		t.Fatalf("Failed to delete transfered state")
 	}
 }

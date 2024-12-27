@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/whisper-project/server.golang/common/storage"
+	"github.com/whisper-project/server.golang/common/platform"
 )
 
 type UserProfile struct {
@@ -42,13 +42,13 @@ func (p *UserProfile) StorageId() string {
 
 func (p *UserProfile) SetStorageId(id string) error {
 	if p == nil {
-		return fmt.Errorf("can't set storage id of nil struct")
+		return fmt.Errorf("can't set platform id of nil struct")
 	}
 	p.Id = id
 	return nil
 }
 
-func (p *UserProfile) Copy() storage.StructPointer {
+func (p *UserProfile) Copy() platform.StructPointer {
 	if p == nil {
 		return nil
 	}
@@ -57,7 +57,7 @@ func (p *UserProfile) Copy() storage.StructPointer {
 	return n
 }
 
-func (p *UserProfile) Downgrade(in any) (storage.StructPointer, error) {
+func (p *UserProfile) Downgrade(in any) (platform.StructPointer, error) {
 	if o, ok := in.(UserProfile); ok {
 		return &o, nil
 	}

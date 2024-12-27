@@ -4,14 +4,18 @@
  * GNU Affero General Public License v3, reproduced in the LICENSE file.
  */
 
-package storage
+package platform
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"strconv"
+	"testing"
 	"time"
+
+	"github.com/go-test/deep"
+	"github.com/google/uuid"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -19,6 +23,18 @@ import (
 type Storable interface {
 	StoragePrefix() string
 	StorageId() string
+}
+
+// StorableInterfaceTester validates the methods on a Storable type.
+// Hand it a value of the type, the expected prefix of the type, and the ID that's in the value.
+func StorableInterfaceTester[T Storable](t *testing.T, s T, prefix, id string) {
+	t.Helper()
+	if s.StoragePrefix() != prefix {
+		t.Errorf("(%T).StoragePrefix() returned %q, expected %q", s, s.StoragePrefix(), prefix)
+	}
+	if v := s.StorageId(); v != id {
+		t.Errorf("(%T).StorageId() returned %q. expected %q", s, v, id)
+	}
 }
 
 func DeleteStorage[T Storable](ctx context.Context, obj T) error {
@@ -39,6 +55,54 @@ type StructPointer interface {
 	SetStorageId(id string) error
 	Copy() StructPointer
 	Downgrade(any) (StructPointer, error)
+}
+
+// StructPointerInterfaceTester validates the methods on a struct pointer type.
+// Hand it a nil of the type, a value of the type, the struct pointed to by that value,
+// the expected prefix of the type, and the ID that's in the concrete struct.
+func StructPointerInterfaceTester[T StructPointer](t *testing.T, n T, v T, pv any, prefix, id string) {
+	t.Helper()
+	// check nil behavior
+	if n.StoragePrefix() != prefix {
+		t.Errorf("nil (%T).StoragePrefix() returned %q, expected %q", n, n.StoragePrefix(), prefix)
+	}
+	if n.StorageId() != "" {
+		t.Errorf("nil (%T).StorageId()returned %q, should return empty string", n, n.StorageId())
+	}
+	if err := n.SetStorageId("test"); err == nil {
+		t.Errorf("nil (%T).SetStorageId() should return an error", n)
+	}
+	if dup := n.Copy(); dup != nil {
+		t.Errorf("nil (%T).Copy() should return nil, got %#v", n, dup)
+	}
+	if _, err := (v).Downgrade(any(nil)); err == nil {
+		t.Errorf("UserProfile.Downgrade(nil) should error out")
+	}
+	// check value behavior
+	if v.StorageId() != id {
+		t.Errorf("StorageId is wrong: %s != %s", v.StorageId(), id)
+	}
+	newId := uuid.NewString()
+	if err := v.SetStorageId(newId); err != nil {
+		t.Errorf("Failed to set platform id: %v", err)
+	}
+	if v.StorageId() != newId {
+		t.Errorf("StorageId is wrong: %s != %s", v.StorageId(), "after")
+	}
+	dup := v.Copy()
+	if diff := deep.Equal(dup, v); diff != nil {
+		t.Error(diff)
+	}
+	if dg, err := v.Downgrade(any(v)); err != nil {
+		t.Error(err)
+	} else if diff := deep.Equal(dg, v); diff != nil {
+		t.Error(diff)
+	}
+	if dg, err := v.Downgrade(pv); err != nil {
+		t.Error(err)
+	} else if dg.StorageId() != id {
+		t.Errorf("Downgraded struct ID is wrong: got %s, should be %s", dg.StorageId(), id)
+	}
 }
 
 type StructPointerNotFound string
@@ -115,6 +179,16 @@ type String interface {
 	Storable
 }
 
+type StorableString string
+
+func (s StorableString) StoragePrefix() string {
+	return "string:"
+}
+
+func (s StorableString) StorageId() string {
+	return string(s)
+}
+
 func FetchString[T String](ctx context.Context, obj T) (string, error) {
 	db, prefix := GetDb()
 	key := prefix + obj.StoragePrefix() + obj.StorageId()
@@ -142,6 +216,16 @@ func StoreString[T String](ctx context.Context, obj T, val string) error {
 type Set interface {
 	~string
 	Storable
+}
+
+type StorableSet string
+
+func (s StorableSet) StoragePrefix() string {
+	return "set:"
+}
+
+func (s StorableSet) StorageId() string {
+	return string(s)
 }
 
 func FetchMembers[T Set](ctx context.Context, obj T) ([]string, error) {
@@ -195,6 +279,16 @@ type SortedSet interface {
 	Storable
 }
 
+type StorableSortedSet string
+
+func (s StorableSortedSet) StoragePrefix() string {
+	return "zset:"
+}
+
+func (s StorableSortedSet) StorageId() string {
+	return string(s)
+}
+
 func FetchRangeInterval[T SortedSet](ctx context.Context, obj T, start, end int64) ([]string, error) {
 	db, prefix := GetDb()
 	key := prefix + obj.StoragePrefix() + obj.StorageId()
@@ -240,6 +334,16 @@ func RemoveMember[T SortedSet](ctx context.Context, obj T, member string) error 
 type List interface {
 	Storable
 	~string
+}
+
+type StorableList string
+
+func (s StorableList) StoragePrefix() string {
+	return "list:"
+}
+
+func (s StorableList) StorageId() string {
+	return string(s)
 }
 
 func FetchRange[T List](ctx context.Context, obj T, start int64, end int64) ([]string, error) {
@@ -294,6 +398,16 @@ func RemoveElement[T List](ctx context.Context, obj T, count int64, element stri
 type Map interface {
 	Storable
 	~string
+}
+
+type StorableMap string
+
+func (s StorableMap) StoragePrefix() string {
+	return "map:"
+}
+
+func (s StorableMap) StorageId() string {
+	return string(s)
 }
 
 func MapGet[T Map](ctx context.Context, obj T, k string) (string, error) {

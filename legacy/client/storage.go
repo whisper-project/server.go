@@ -9,7 +9,7 @@ package client
 import (
 	"fmt"
 
-	"github.com/whisper-project/server.golang/common/storage"
+	"github.com/whisper-project/server.golang/common/platform"
 )
 
 type Data struct {
@@ -39,13 +39,13 @@ func (d *Data) StorageId() string {
 
 func (d *Data) SetStorageId(id string) error {
 	if d == nil {
-		return fmt.Errorf("can't set storage id of nil struct")
+		return fmt.Errorf("can't set platform id of nil struct")
 	}
 	d.Id = id
 	return nil
 }
 
-func (d *Data) Copy() storage.StructPointer {
+func (d *Data) Copy() platform.StructPointer {
 	if d == nil {
 		return nil
 	}
@@ -54,7 +54,7 @@ func (d *Data) Copy() storage.StructPointer {
 	return n
 }
 
-func (d *Data) Downgrade(in any) (storage.StructPointer, error) {
+func (d *Data) Downgrade(in any) (platform.StructPointer, error) {
 	if o, ok := in.(Data); ok {
 		return &o, nil
 	}

@@ -9,7 +9,7 @@ package conversation
 import (
 	"fmt"
 
-	"github.com/whisper-project/server.golang/common/storage"
+	"github.com/whisper-project/server.golang/common/platform"
 )
 
 type Data struct {
@@ -32,13 +32,13 @@ func (c *Data) StorageId() string {
 
 func (c *Data) SetStorageId(id string) error {
 	if c == nil {
-		return fmt.Errorf("can't set storage id of nil struct")
+		return fmt.Errorf("can't set platform id of nil struct")
 	}
 	c.Id = id
 	return nil
 }
 
-func (c *Data) Copy() storage.StructPointer {
+func (c *Data) Copy() platform.StructPointer {
 	if c == nil {
 		return nil
 	}
@@ -47,7 +47,7 @@ func (c *Data) Copy() storage.StructPointer {
 	return n
 }
 
-func (c *Data) Downgrade(in any) (storage.StructPointer, error) {
+func (c *Data) Downgrade(in any) (platform.StructPointer, error) {
 	if o, ok := in.(Data); ok {
 		return &o, nil
 	}
@@ -84,13 +84,13 @@ func (s *State) StorageId() string {
 
 func (s *State) SetStorageId(id string) error {
 	if s == nil {
-		return fmt.Errorf("can't set storage id of nil struct")
+		return fmt.Errorf("can't set platform id of nil struct")
 	}
 	s.Id = id
 	return nil
 }
 
-func (s *State) Copy() storage.StructPointer {
+func (s *State) Copy() platform.StructPointer {
 	if s == nil {
 		return nil
 	}
@@ -99,7 +99,7 @@ func (s *State) Copy() storage.StructPointer {
 	return n
 }
 
-func (s *State) Downgrade(in any) (storage.StructPointer, error) {
+func (s *State) Downgrade(in any) (platform.StructPointer, error) {
 	if o, ok := in.(State); ok {
 		return &o, nil
 	}

@@ -12,7 +12,7 @@ import (
 	"os"
 	"strings"
 
-	storage2 "github.com/whisper-project/server.golang/common/storage"
+	storage2 "github.com/whisper-project/server.golang/common/platform"
 
 	"github.com/whisper-project/server.golang/legacy/client"
 	"github.com/whisper-project/server.golang/legacy/conversation"

@@ -4,75 +4,61 @@
  * GNU Affero General Public License v3, reproduced in the LICENSE file.
  */
 
-package profile
+package handlers
 
 import (
 	"fmt"
 	"net/http"
 
 	"github.com/whisper-project/server.golang/common/middleware"
-
-	"github.com/whisper-project/server.golang/common/auth"
-
+	"github.com/whisper-project/server.golang/common/platform"
 	"github.com/whisper-project/server.golang/common/storage"
 
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	"github.com/gin-gonic/gin"
 )
 
-func AuthenticateRequest(c *gin.Context, profileId string) *Profile {
-	if profileId == "" {
-		middleware.CtxLog(c).Info("missing profileId in request")
-		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": "missing profileId"})
-		return nil
-	}
-	p := &Profile{Id: profileId}
-	if err := storage.LoadFields(c.Request.Context(), p); err != nil {
-		middleware.CtxLog(c).Error("Load Fields failure", zap.String("profileId", profileId), zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return nil
-	}
-	if auth.AuthenticateRequest(c, profileId, p.Secret) {
-		return p
-	}
-	return nil
-}
-
-func NewProfile(c *gin.Context, hashedEmail string) (*Profile, error) {
-	ctx := c.Request.Context()
-	p := &Profile{
-		Id:        uuid.NewString(),
-		EmailHash: hashedEmail,
-		Secret:    uuid.NewString(),
-	}
-	if err := storage.SaveFields(ctx, p); err != nil {
-		middleware.CtxLog(c).Error("Save Fields failure",
-			zap.String("profileId", p.Id), zap.Error(err))
-		return nil, err
-	}
-	if err := storage.MapSet(ctx, EmailProfileMap, hashedEmail, p.Id); err != nil {
-		middleware.CtxLog(c).Error("Map set failure",
-			zap.String("email", hashedEmail), zap.String("profileId", p.Id), zap.Error(err))
-		return nil, err
-	}
-	if _, err := AddWhisperConversation(c, p.Id, "Conversation 1"); err != nil {
-		return nil, err
-	}
-	return p, nil
-}
-
-func GetProfileWhisperConversations(c *gin.Context) {
-	profileId := c.Param("profileId")
-	if AuthenticateRequest(c, profileId) == nil {
+func PatchProfileHandler(c *gin.Context) {
+	var updates map[string]string
+	if err := c.ShouldBindJSON(&updates); err != nil {
+		middleware.CtxLog(c).Info("Can't bind patch map", zap.Error(err))
+		c.JSON(400, gin.H{"error": "Invalid request format"})
 		return
 	}
-	key := WhisperConversationMap(profileId)
-	cMap, err := storage.MapGetAll(c.Request.Context(), key)
+	p := AuthenticateRequest(c)
+	if p == nil {
+		return
+	}
+	updated := false
+	if n, ok := updates["name"]; ok && n != "" && n != p.Name {
+		p.Name = n
+		updated = true
+	}
+	if s, ok := updates["secret"]; ok && s != "" && s != p.Secret {
+		p.Secret = s
+		updated = true
+	}
+	if updated {
+		if err := platform.SaveFields(c.Request.Context(), p); err != nil {
+			middleware.CtxLog(c).Info("Can't save fields on profile patch",
+				zap.String("profileId", p.Id), zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+	middleware.CtxLog(c).Info("Patched profile",
+		zap.String("profileId", p.Id), zap.Any("updates", updates))
+	c.Status(http.StatusNoContent)
+}
+
+func GetProfileWhisperConversationsHandler(c *gin.Context) {
+	if AuthenticateRequest(c) == nil {
+		return
+	}
+	profileId := c.GetHeader("X-Profile-Id")
+	cMap, err := WhisperConversations(c, profileId)
 	if err != nil {
-		middleware.CtxLog(c).Error("storage error on whisper conversations retrieval",
-			zap.String("profileId", profileId), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": err.Error()})
 		return
 	}
@@ -85,25 +71,25 @@ func GetProfileWhisperConversations(c *gin.Context) {
 	c.JSON(http.StatusOK, cMap)
 }
 
-func GetProfileWhisperConversationId(c *gin.Context) {
-	profileId := c.Param("profileId")
+func GetProfileWhisperConversationIdHandler(c *gin.Context) {
+	if AuthenticateRequest(c) == nil {
+		return
+	}
+	profileId := c.GetHeader("X-Profile-Id")
 	name := c.Param("name")
 	if name == "" {
-		middleware.CtxLog(c).Info("empty whisper conversation name", zap.String("profileId", profileId))
+		middleware.CtxLog(c).Info("empty whisper conversation name")
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": "empty whisper conversation name"})
 		return
 	}
-	if AuthenticateRequest(c, profileId) == nil {
-		return
-	}
-	conversationId, err := WhisperConversation(c, profileId, c.Param("name"))
+	conversationId, err := WhisperConversation(c, profileId, name)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": err.Error()})
 		return
 	}
 	if conversationId == "" {
 		middleware.CtxLog(c).Info("whisper conversation not found",
-			zap.String("profileId", profileId), zap.String("name", c.Param("name")))
+			zap.String("profileId", profileId), zap.String("name", name))
 		c.JSON(http.StatusNotFound, gin.H{"status": "error", "error": "whisper conversation not found"})
 	}
 	middleware.CtxLog(c).Info("retrieved whisper conversation",
@@ -112,11 +98,11 @@ func GetProfileWhisperConversationId(c *gin.Context) {
 	c.JSON(http.StatusOK, conversationId)
 }
 
-func PostProfileWhisperConversation(c *gin.Context) {
-	profileId := c.Param("profileId")
-	if AuthenticateRequest(c, profileId) == nil {
+func PostProfileWhisperConversationHandler(c *gin.Context) {
+	if AuthenticateRequest(c) == nil {
 		return
 	}
+	profileId := c.GetHeader("X-Profile-Id")
 	var name string
 	err := c.Bind(&name)
 	if err != nil {
@@ -128,12 +114,12 @@ func PostProfileWhisperConversation(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": "empty whisper conversation name"})
 		return
 	}
-	cMap, err := WhisperConversations(c, profileId)
+	id, err := WhisperConversation(c, profileId, name)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": err.Error()})
 		return
 	}
-	if _, ok := cMap[name]; ok {
+	if id != "" {
 		middleware.CtxLog(c).Info("whisper conversation already exists",
 			zap.String("profileId", profileId), zap.String("name", name))
 		c.JSON(http.StatusConflict, gin.H{"status": "error", "error": "whisper conversation already exists"})
@@ -150,11 +136,11 @@ func PostProfileWhisperConversation(c *gin.Context) {
 	c.JSON(http.StatusCreated, conversationId)
 }
 
-func DeleteProfileWhisperConversation(c *gin.Context) {
-	profileId := c.Param("profileId")
-	if AuthenticateRequest(c, profileId) == nil {
+func DeleteProfileWhisperConversationHandler(c *gin.Context) {
+	if AuthenticateRequest(c) == nil {
 		return
 	}
+	profileId := c.GetHeader("X-Profile-Id")
 	name := c.Param("name")
 	if name == "" {
 		middleware.CtxLog(c).Error("empty whisper conversation name")
@@ -180,14 +166,43 @@ func DeleteProfileWhisperConversation(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// NewLaunchProfile creates a launch profile for a hashed email from a client and records it in the database.
+func NewLaunchProfile(c *gin.Context, hashedEmail, clientId string) (*storage.Profile, error) {
+	ctx := c.Request.Context()
+	p := storage.NewProfile(hashedEmail)
+	if err := platform.SaveFields(ctx, p); err != nil {
+		middleware.CtxLog(c).Error("Save Fields failure on new profile creation",
+			zap.String("profileId", p.Id), zap.Error(err))
+		return nil, err
+	}
+	cleanup := false
+	defer func() {
+		if !cleanup {
+			return
+		}
+		_ = platform.MapRemove(ctx, storage.EmailProfileMap, hashedEmail)
+		_ = platform.DeleteStorage(ctx, p)
+	}()
+	if err := SetEmailProfile(c, p.EmailHash, p.Id); err != nil {
+		cleanup = true
+		return nil, err
+	}
+	if _, err := AddWhisperConversation(c, p.Id, "Conversation 1"); err != nil {
+		cleanup = true
+		return nil, err
+	}
+	ObserveClientLaunch(c, clientId, p.Id)
+	return p, nil
+}
+
 func WhisperConversation(c *gin.Context, profileId string, name string) (string, error) {
 	if name == "" {
 		return "", nil
 	}
-	key := WhisperConversationMap(profileId)
-	conversationId, err := storage.MapGet(c.Request.Context(), key, name)
+	key := storage.WhisperConversationMap(profileId)
+	conversationId, err := platform.MapGet(c.Request.Context(), key, name)
 	if err != nil {
-		middleware.CtxLog(c).Error("storage error on whisper conversation retrieval",
+		middleware.CtxLog(c).Error("platform error on whisper conversation retrieval",
 			zap.String("profileId", profileId), zap.String("name", c.Param("name")), zap.Error(err))
 		return "", err
 	}
@@ -195,10 +210,10 @@ func WhisperConversation(c *gin.Context, profileId string, name string) (string,
 }
 
 func WhisperConversations(c *gin.Context, profileId string) (map[string]string, error) {
-	key := WhisperConversationMap(profileId)
-	cMap, err := storage.MapGetAll(c.Request.Context(), key)
+	key := storage.WhisperConversationMap(profileId)
+	cMap, err := platform.MapGetAll(c.Request.Context(), key)
 	if err != nil {
-		middleware.CtxLog(c).Error("storage error on whisper conversations retrieval",
+		middleware.CtxLog(c).Error("platform error on whisper conversations retrieval",
 			zap.String("profileId", profileId), zap.Error(err))
 		return nil, err
 	}
@@ -206,20 +221,26 @@ func WhisperConversations(c *gin.Context, profileId string) (map[string]string, 
 }
 
 func AddWhisperConversation(c *gin.Context, profileId string, name string) (string, error) {
-	key := WhisperConversationMap(profileId)
-	conversationId := uuid.NewString()
-	if err := storage.MapSet(c.Request.Context(), key, name, conversationId); err != nil {
-		middleware.CtxLog(c).Error("storage error on whisper conversation creation",
+	ctx := c.Request.Context()
+	key := storage.WhisperConversationMap(profileId)
+	conversation := storage.NewConversation(profileId, name)
+	if err := platform.SaveFields(ctx, conversation); err != nil {
+		middleware.CtxLog(c).Error("Save Fields failure on whisper conversation creation",
+			zap.String("conversationId", conversation.Id), zap.Error(err))
+		return "", err
+	}
+	if err := platform.MapSet(ctx, key, name, conversation.Id); err != nil {
+		middleware.CtxLog(c).Error("platform error on whisper conversation creation",
 			zap.String("profileId", profileId), zap.String("name", name), zap.Error(err))
 		return "", err
 	}
-	return conversationId, nil
+	return conversation.Id, nil
 }
 
 func DeleteWhisperConversation(c *gin.Context, profileId string, name string) error {
-	key := WhisperConversationMap(profileId)
-	if err := storage.MapRemove(c.Request.Context(), key, name); err != nil {
-		middleware.CtxLog(c).Error("storage error on whisper conversation creation",
+	key := storage.WhisperConversationMap(profileId)
+	if err := platform.MapRemove(c.Request.Context(), key, name); err != nil {
+		middleware.CtxLog(c).Error("platform error on whisper conversation deletion",
 			zap.String("profileId", profileId), zap.String("name", name), zap.Error(err))
 		return err
 	}
@@ -227,7 +248,7 @@ func DeleteWhisperConversation(c *gin.Context, profileId string, name string) er
 }
 
 func EmailProfile(c *gin.Context, hashedEmail string) (string, error) {
-	profileId, err := storage.MapGet(c.Request.Context(), EmailProfileMap, hashedEmail)
+	profileId, err := platform.MapGet(c.Request.Context(), storage.EmailProfileMap, hashedEmail)
 	if err != nil {
 		middleware.CtxLog(c).Error("EmailProfileMap failure", zap.String("email", hashedEmail), zap.Error(err))
 		return "", err
@@ -236,27 +257,9 @@ func EmailProfile(c *gin.Context, hashedEmail string) (string, error) {
 }
 
 func SetEmailProfile(c *gin.Context, hashedEmail, profileId string) error {
-	if err := storage.MapSet(c.Request.Context(), EmailProfileMap, hashedEmail, profileId); err != nil {
+	if err := platform.MapSet(c.Request.Context(), storage.EmailProfileMap, hashedEmail, profileId); err != nil {
 		middleware.CtxLog(c).Error("EmailProfileMap set failure",
 			zap.String("email", hashedEmail), zap.String("profileId", profileId), zap.Error(err))
-		return err
-	}
-	return nil
-}
-
-func ClientProfile(c *gin.Context, clientId string) (string, error) {
-	profileId, err := storage.MapGet(c.Request.Context(), ClientProfileMap, clientId)
-	if err != nil {
-		middleware.CtxLog(c).Error("ClientProfileMap failure", zap.String("clientId", clientId), zap.Error(err))
-		return "", err
-	}
-	return profileId, nil
-}
-
-func SetClientProfile(c *gin.Context, clientId, profileId string) error {
-	if err := storage.MapSet(c.Request.Context(), ClientProfileMap, clientId, profileId); err != nil {
-		middleware.CtxLog(c).Error("ClientProfileMap set failure",
-			zap.String("clientId", clientId), zap.String("profileId", profileId), zap.Error(err))
 		return err
 	}
 	return nil

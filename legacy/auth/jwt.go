@@ -15,14 +15,14 @@ import (
 
 	"github.com/whisper-project/server.golang/common/middleware"
 
-	"github.com/whisper-project/server.golang/common/storage"
+	"github.com/whisper-project/server.golang/common/platform"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
 func CreateApnsJwt(c *gin.Context) (string, error) {
-	config := storage.GetConfig()
+	config := platform.GetConfig()
 	block, _ := pem.Decode([]byte(config.ApnsCredSecret))
 	if block == nil || block.Type != "PRIVATE KEY" {
 		// notest

@@ -4,21 +4,19 @@
  * GNU Affero General Public License v3, reproduced in the LICENSE file.
  */
 
-package console
+package handlers
 
 import (
-	"crypto/sha1"
-	"encoding/base64"
 	"fmt"
 	"net/http"
 	"os"
 	"strconv"
 
+	"github.com/whisper-project/server.golang/common/storage"
+
 	"github.com/whisper-project/server.golang/common/middleware"
 
-	"github.com/whisper-project/server.golang/common/profile"
-
-	"github.com/whisper-project/server.golang/common/storage"
+	"github.com/whisper-project/server.golang/common/platform"
 
 	"gopkg.in/gomail.v2"
 
@@ -26,66 +24,62 @@ import (
 	"go.uber.org/zap"
 )
 
-func PostPrefsHandler(c *gin.Context) {
+func PostLaunchHandler(c *gin.Context) {
 	clientId := c.GetHeader("X-Client-Id")
-	if clientId == "" {
-		middleware.CtxLog(c).Info("Missing X-Client-Id header")
-		c.JSON(400, gin.H{"error": "Invalid request"})
-		return
-	}
+	profileId := c.GetHeader("X-Profile-Id")
 	var emailHash string
-	if err := c.ShouldBindJSON(&emailHash); err != nil {
-		middleware.CtxLog(c).Info("Invalid body", zap.Error(err))
+	var err error
+	if err = c.ShouldBindJSON(&emailHash); err != nil || emailHash == "" {
+		middleware.CtxLog(c).Info("Invalid email hash", zap.Error(err))
 		c.JSON(400, gin.H{"error": "Invalid request"})
 		return
 	}
-	// Look for a profile that matches the email
-	profileId, err := profile.EmailProfile(c, emailHash)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	if profileId != "" {
-		// Found an existing profile with that email
-		if c.GetHeader("Authorization") == "" {
-			// User needs to provide password to authorize against this profile, so challenge with it
-			middleware.CtxLog(c).Info("Profile exists, need authorization", zap.String("profileId", profileId))
-			c.JSON(http.StatusUnauthorized, profileId)
+	if profileId == "" {
+		// The client doesn't know their profile; they are requesting it.
+		// So look for an existing profile that matches the email hash that was sent.
+		profileId, err = EmailProfile(c, emailHash)
+		if profileId != "" {
+			// there's an existing profile, so the user needs to authenticate.
+			middleware.CtxLog(c).Info("Profile exists, need authentication", zap.String("profileId", profileId))
+			c.Writer.Header().Set("WWW-Authenticate", fmt.Sprintf(`Bearer realm="%s"`, profileId))
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Provide authorization token"})
 			return
 		}
-		// Check the user's authorization
-		p := profile.AuthenticateRequest(c, profileId)
-		if p == nil {
-			return
-		}
-		// they are authorized, so remember them against this client
-		if err = profile.SetClientProfile(c, clientId, p.Id); err != nil {
+		// there's no existing profile, so create one and return it
+		p, err := NewLaunchProfile(c, emailHash, clientId)
+		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
 		}
-		middleware.CtxLog(c).Info("Authenticated profile",
+		middleware.CtxLog(c).Info("Created new profile",
 			zap.String("email", p.EmailHash), zap.String("profileId", p.Id), zap.String("clientId", clientId))
-		c.Status(http.StatusNoContent)
+		response := map[string]string{"id": p.Id, "name": p.Name, "secret": p.Secret}
+		c.JSON(http.StatusCreated, response)
 		return
 	}
-	// This is a new email, generate a profile for it, and record it against email and client
-	p, err := profile.NewProfile(c, emailHash)
+	// make sure the client-supplied profile ID is real before responding
+	emailProfileId, err := EmailProfile(c, emailHash)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	if err = profile.SetEmailProfile(c, p.EmailHash, p.Id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if emailProfileId != profileId {
+		middleware.CtxLog(c).Info("Profile for email doesn't match client-supplied profile",
+			zap.String("email profileId", emailProfileId), zap.String("client profileId", profileId))
+		c.JSON(http.StatusNotFound, gin.H{"error": "The supplied profile ID doesn't match the supplied email"})
 		return
 	}
-	if err = profile.SetClientProfile(c, clientId, p.Id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	// Check the user's authentication
+	p := AuthenticateRequest(c)
+	if p == nil {
 		return
 	}
-	middleware.CtxLog(c).Info("Created new profile",
-		zap.String("email", p.EmailHash), zap.String("profileId", p.Id), zap.String("clientId", clientId))
-	response := map[string]string{"id": p.Id, "secret": p.Secret}
-	c.JSON(http.StatusCreated, response)
+	// they are authenticated, so remember them against this client
+	ObserveClientLaunch(c, clientId, profileId)
+	middleware.CtxLog(c).Info("Authenticated profile",
+		zap.String("profileId", p.Id), zap.String("clientId", clientId),
+		zap.String("name", p.Name), zap.String("email", p.EmailHash))
+	c.JSON(http.StatusOK, gin.H{"name": p.Name})
+	return
 }
 
 func PostRequestEmailHandler(c *gin.Context) {
@@ -96,11 +90,10 @@ func PostRequestEmailHandler(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "Invalid request"})
 		return
 	}
-	hash := makeSha1(email)
-
-	// Look for a profile that matches the email
+	hash := platform.MakeSha1(email)
+	// look for a profile that matches the email
 	ctx := c.Request.Context()
-	profileId, err := storage.MapGet(ctx, profile.EmailProfileMap, hash)
+	profileId, err := platform.MapGet(ctx, storage.EmailProfileMap, hash)
 	if err != nil {
 		middleware.CtxLog(c).Error("Map failure", zap.String("email", hash), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -113,8 +106,8 @@ func PostRequestEmailHandler(c *gin.Context) {
 		return
 	}
 	// otherwise, load the profile, and send email with password
-	p := &profile.Profile{Id: profileId}
-	if err := storage.LoadFields(ctx, p); err != nil {
+	p := &storage.Profile{Id: profileId}
+	if err := platform.LoadFields(ctx, p); err != nil {
 		middleware.CtxLog(c).Error("Load Fields failure", zap.String("profileId", profileId), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
@@ -125,11 +118,13 @@ func PostRequestEmailHandler(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// from https://stackoverflow.com/a/10701951/558006
-func makeSha1(s string) string {
-	hashFn := sha1.New()
-	hashFn.Write([]byte(s))
-	return base64.URLEncoding.EncodeToString(hashFn.Sum(nil))
+func GetShutdownHandler(c *gin.Context) {
+	if AuthenticateRequest(c) != nil {
+		return
+	}
+	clientId := c.GetHeader("X-Client-Id")
+	ObserveClientShutdown(c, clientId)
+	c.Status(http.StatusNoContent)
 }
 
 func sendMail(to, pw string) error {

@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"strings"
 
-	storage2 "github.com/whisper-project/server.golang/common/storage"
+	storage2 "github.com/whisper-project/server.golang/common/platform"
 
 	"github.com/gin-gonic/gin"
 

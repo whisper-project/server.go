@@ -17,7 +17,7 @@ import (
 
 	"github.com/whisper-project/server.golang/common/middleware"
 
-	"github.com/whisper-project/server.golang/common/storage"
+	"github.com/whisper-project/server.golang/common/platform"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -56,7 +56,7 @@ func TestApnsJwt(t *testing.T) {
 	if !token.Valid {
 		t.Fatalf("apns jwt is not valid")
 	}
-	config := storage.GetConfig()
+	config := platform.GetConfig()
 	if token.Header["kid"] != config.ApnsCredId {
 		t.Fatalf("token has wrong kid: %q", token.Header["kid"])
 	}

@@ -12,7 +12,7 @@ import (
 
 	"github.com/whisper-project/server.golang/common/middleware"
 
-	"github.com/whisper-project/server.golang/common/storage"
+	"github.com/whisper-project/server.golang/common/platform"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
@@ -30,11 +30,11 @@ Runs in the development environment by default.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.SetFlags(0)
 		env, _ := cmd.Flags().GetString("env")
-		err := storage.PushConfig(env)
+		err := platform.PushConfig(env)
 		if err != nil {
 			panic(fmt.Sprintf("Can't load configuration: %v", err))
 		}
-		defer storage.PopConfig()
+		defer platform.PopConfig()
 		serve()
 	},
 }
@@ -46,7 +46,7 @@ func init() {
 }
 
 func serve() {
-	if storage.GetConfig().Name == "production" {
+	if platform.GetConfig().Name == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	r := middleware.CreateCoreEngine()
