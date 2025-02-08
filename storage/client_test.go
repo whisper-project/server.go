@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/whisper-project/server.golang/common/platform"
+	"github.com/whisper-project/server.golang/platform"
 
 	"github.com/google/uuid"
 )
@@ -26,22 +26,22 @@ func TestLaunchDataInterface(t *testing.T) {
 func TestNewLaunchData(t *testing.T) {
 	clientId := uuid.NewString()
 	profileId := uuid.NewString()
-	now := time.Now()
-	l := NewLaunchData(clientId, profileId)
+	now := time.Now().UnixMilli()
+	l := NewLaunchData("test", clientId, profileId)
+	if l.ClientType != "test" {
+		t.Errorf("NewLaunchData returned wrong client type. Got %s, Want %s", l.ClientType, "device")
+	}
 	if l.ClientId != clientId {
 		t.Errorf("NewLaunchData returned wrong client id. Got %s, Want %s", l.ClientId, clientId)
 	}
 	if l.ProfileId != profileId {
 		t.Errorf("NewLaunchData returned wrong profile id. Got %s, Want %s", l.ProfileId, profileId)
 	}
-	if !now.Before(l.Start) {
-		t.Errorf("NewLaunchData returned an early start. Got %v, Want later than %v", l.Start, now)
+	if now > l.Start {
+		t.Errorf("NewLaunchData returned an early start. Got %v, Want no later than %v", l.Start, now)
 	}
-	if !now.After(l.Idle) {
-		t.Errorf("NewLaunchData returned a late idle. Got %v, Want later than %v", l.Idle, now)
-	}
-	if !now.After(l.End) {
-		t.Errorf("NewLaunchData returned a late end. Got %v, Want later than %v", l.End, now)
+	if l.End != 0 {
+		t.Errorf("NewLaunchData returned the wrong end. Got %v, want 0", l.End)
 	}
 }
 

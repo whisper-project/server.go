@@ -15,9 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/whisper-project/server.golang/common/middleware"
-
-	"github.com/whisper-project/server.golang/common/platform"
+	"github.com/whisper-project/server.golang/middleware"
+	"github.com/whisper-project/server.golang/platform"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"

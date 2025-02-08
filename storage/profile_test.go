@@ -9,8 +9,9 @@ package storage
 import (
 	"testing"
 
+	"github.com/whisper-project/server.golang/platform"
+
 	"github.com/google/uuid"
-	"github.com/whisper-project/server.golang/common/platform"
 )
 
 func TestProfileInterfaceDefinition(t *testing.T) {

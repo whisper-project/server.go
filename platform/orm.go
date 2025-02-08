@@ -7,7 +7,9 @@
 package platform
 
 import (
+	"bytes"
 	"context"
+	"encoding/gob"
 	"errors"
 	"fmt"
 	"strconv"
@@ -35,6 +37,16 @@ func StorableInterfaceTester[T Storable](t *testing.T, s T, prefix, id string) {
 	if v := s.StorageId(); v != id {
 		t.Errorf("(%T).StorageId() returned %q. expected %q", s, v, id)
 	}
+}
+
+func SetExpiration[T Storable](ctx context.Context, obj T, secs int64) error {
+	db, prefix := GetDb()
+	key := prefix + obj.StoragePrefix() + obj.StorageId()
+	res := db.Expire(ctx, key, time.Duration(secs)*time.Second)
+	if err := res.Err(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func DeleteStorage[T Storable](ctx context.Context, obj T) error {
@@ -174,6 +186,48 @@ func MapFields[T StructPointer](ctx context.Context, f func(), obj T) error {
 	return nil
 }
 
+type Gob interface {
+	Storable
+	~string
+}
+
+type StorableGob string
+
+func (s StorableGob) StoragePrefix() string {
+	return "gob:"
+}
+
+func (s StorableGob) StorageId() string {
+	return string(s)
+}
+
+func FetchGob[T Gob](ctx context.Context, obj T, receiver any) error {
+	db, prefix := GetDb()
+	key := prefix + obj.StoragePrefix() + obj.StorageId()
+	res := db.Get(ctx, key)
+	if err := res.Err(); err != nil {
+		return err
+	}
+	return gob.NewDecoder(bytes.NewReader([]byte(res.Val()))).Decode(receiver)
+}
+
+func StoreGob[T Gob](ctx context.Context, obj T, value any) error {
+	if value == nil {
+		return fmt.Errorf("cannot store nil value")
+	}
+	var b bytes.Buffer
+	if err := gob.NewEncoder(&b).Encode(value); err != nil {
+		return err
+	}
+	db, prefix := GetDb()
+	key := prefix + obj.StoragePrefix() + obj.StorageId()
+	res := db.Set(ctx, key, b.String(), 0)
+	if err := res.Err(); err != nil {
+		return err
+	}
+	return nil
+}
+
 type String interface {
 	~string
 	Storable
@@ -234,6 +288,16 @@ func FetchMembers[T Set](ctx context.Context, obj T) ([]string, error) {
 	res := db.SMembers(ctx, key)
 	if err := res.Err(); err != nil {
 		return nil, err
+	}
+	return res.Val(), nil
+}
+
+func IsMember[T Set](ctx context.Context, obj T, member string) (bool, error) {
+	db, prefix := GetDb()
+	key := prefix + obj.StoragePrefix() + obj.StorageId()
+	res := db.SIsMember(ctx, key, member)
+	if err := res.Err(); err != nil {
+		return false, err
 	}
 	return res.Val(), nil
 }
@@ -356,10 +420,14 @@ func FetchRange[T List](ctx context.Context, obj T, start int64, end int64) ([]s
 	return res.Val(), nil
 }
 
-func FetchOneBlocking[T List](ctx context.Context, obj T, timeout time.Duration) (string, error) {
+func FetchOneBlocking[T List](ctx context.Context, obj T, onLeft bool, timeout time.Duration) (string, error) {
 	db, prefix := GetDb()
 	key := prefix + obj.StoragePrefix() + obj.StorageId()
-	res := db.BLMove(ctx, key, key, "right", "left", timeout)
+	src, dst := "right", "left"
+	if onLeft {
+		src, dst = "left", "right"
+	}
+	res := db.BLMove(ctx, key, key, src, dst, timeout)
 	if err := res.Err(); err != nil {
 		return "", err
 	}

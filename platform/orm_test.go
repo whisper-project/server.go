@@ -185,6 +185,33 @@ func TestCopyDowngradeOrmTester(t *testing.T) {
 	}
 }
 
+var ormTestGob StorableGob = "ormTestGob"
+
+func TestStorableGobInterfaceDefinition(t *testing.T) {
+	StorableInterfaceTester(t, ormTestGob, "gob:", "ormTestGob")
+}
+
+func TestFetchSetFetchGob(t *testing.T) {
+	ctx := context.Background()
+	var received map[string][]string
+	stored := map[string][]string{"test1": {"test1"}, "test2": {"test2"}}
+	if err := FetchGob(ctx, ormTestGob, &received); err == nil {
+		t.Errorf("FetchGob of missing gob succeeded (%v), expected failure", received)
+	}
+	if err := StoreGob(ctx, ormTestGob, &stored); err != nil {
+		t.Fatal(err)
+	}
+	if err := FetchGob(ctx, ormTestGob, &received); err != nil {
+		t.Fatal(err)
+	}
+	if diff := deep.Equal(stored, received); diff != nil {
+		t.Error(diff)
+	}
+	if err := DeleteStorage(ctx, ormTestGob); err != nil {
+		t.Error(err)
+	}
+}
+
 var ormTestString StorableString = "ormTestString"
 
 func TestStorableStringInterfaceDefinition(t *testing.T) {
@@ -207,20 +234,39 @@ func TestFetchSetFetchString(t *testing.T) {
 	}
 }
 
+func TestExpireString(t *testing.T) {
+	ctx := context.Background()
+	if err := StoreString(ctx, ormTestString, string(ormTestString)); err != nil {
+		t.Fatal(err)
+	}
+	if err := SetExpiration(ctx, ormTestString, 1); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(1500 * time.Millisecond)
+	if val, err := FetchString(ctx, ormTestString); err == nil && val != "" {
+		t.Errorf("FetchString of expired string failed (%v), expected success with empty value (%s)", err, val)
+	}
+}
+
 var ormTestSet StorableSet = "ormTestSet"
 
 func TestStorableSetInterfaceDefinition(t *testing.T) {
 	StorableInterfaceTester(t, ormTestSet, "set:", "ormTestSet")
 }
 
-func TestFetchNoMembers(t *testing.T) {
+func TestFetchIsNoMembers(t *testing.T) {
 	ctx := context.Background()
 	if members, err := FetchMembers(ctx, ormTestSet); err != nil || len(members) != 0 {
 		t.Errorf("FetchMembers of empty set failed, expected success with no members")
 	}
+	if val, err := IsMember(ctx, ormTestSet, "b"); err != nil {
+		t.Errorf("IsMember failed: %v", err)
+	} else if val {
+		t.Errorf("IsMember returned true, expected false")
+	}
 }
 
-func TestAddFetchRemoveMembers(t *testing.T) {
+func TestAddFetchIsRemoveMembers(t *testing.T) {
 	ctx := context.Background()
 	saved := []string{"a", "b", "c", "b", "a"}
 	if err := AddMembers(ctx, ormTestSet, saved...); err != nil {
@@ -233,6 +279,11 @@ func TestAddFetchRemoveMembers(t *testing.T) {
 		t.Errorf("FetchMembers failed: %v", err)
 	} else if len(found) != 3 {
 		t.Errorf("FetchMembers returned %d results, expected 3: %#v", len(found), found)
+	}
+	if val, err := IsMember(ctx, ormTestSet, "b"); err != nil {
+		t.Errorf("IsMember failed: %v", err)
+	} else if !val {
+		t.Errorf("IsMember returned false, expected true")
 	}
 	if err := RemoveMembers(ctx, ormTestSet, "b", "c"); err != nil {
 		t.Errorf("Failed to remove members: %v", err)
@@ -345,7 +396,7 @@ func TestFetchOneBlocking(t *testing.T) {
 	}()
 	c := make(chan string)
 	go func() {
-		if element, err := FetchOneBlocking(ctx, ormTestList, 2*time.Second); err != nil {
+		if element, err := FetchOneBlocking(ctx, ormTestList, false, 2*time.Second); err != nil {
 			t.Errorf("FetchOneBlocking failed: %v", err)
 			c <- "failed"
 		} else {

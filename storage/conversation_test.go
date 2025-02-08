@@ -9,8 +9,9 @@ package storage
 import (
 	"testing"
 
+	"github.com/whisper-project/server.golang/platform"
+
 	"github.com/google/uuid"
-	"github.com/whisper-project/server.golang/common/platform"
 )
 
 func TestConversationInterfaceDefinition(t *testing.T) {
@@ -34,8 +35,8 @@ func TestNewConversation(t *testing.T) {
 	}
 }
 
-func TestAllowedParticipantSetInterface(t *testing.T) {
+func TestAllowedListenersInterface(t *testing.T) {
 	id := uuid.NewString()
-	a := AllowedParticipantSet(id)
-	platform.StorableInterfaceTester(t, a, "allowedParticipantSet:", id)
+	a := AllowedListeners(id)
+	platform.StorableInterfaceTester(t, a, "allowed-listeners:", id)
 }

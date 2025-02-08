@@ -3,6 +3,7 @@ module github.com/whisper-project/server.golang
 go 1.23.3
 
 require (
+	github.com/ably/ably-go v1.2.21
 	github.com/deckarep/golang-set/v2 v2.7.0
 	github.com/dotenv-org/godotenvvault v0.6.0
 	github.com/gin-contrib/zap v1.1.4
@@ -34,6 +35,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/klauspost/compress v1.10.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -51,4 +53,5 @@ require (
 	google.golang.org/protobuf v1.36.0 // indirect
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	nhooyr.io/websocket v1.8.7 // indirect
 )

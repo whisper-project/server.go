@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/whisper-project/server.golang/common/platform"
+	"github.com/whisper-project/server.golang/platform"
 )
 
 type UserProfile struct {

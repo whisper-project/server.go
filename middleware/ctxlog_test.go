@@ -17,7 +17,9 @@ import (
 )
 
 func TestCreateCoreEngineLoggerAvailability(t *testing.T) {
-	r := CreateCoreEngine()
+	logger, _ := zap.NewDevelopment()
+	r := CreateCoreEngine(logger)
+	defer logger.Sync()
 	r.GET("/ping", func(c *gin.Context) {
 		CtxLogS(c).Infow("Retrieved sugared zap logger", "url", c.Request.URL)
 		CtxLog(c).Info("Retrieved zap logger", zap.String("url", c.Request.URL.String()))
@@ -35,7 +37,9 @@ func TestCreateCoreEngineLoggerAvailability(t *testing.T) {
 }
 
 func TestCreateCoreEngineErrorReporting(t *testing.T) {
-	r := CreateCoreEngine()
+	logger, _ := zap.NewDevelopment()
+	r := CreateCoreEngine(logger)
+	defer logger.Sync()
 	r.GET("/ping", func(c *gin.Context) {
 		CtxLogS(c).Errorw("test error 1", "url", c.Request.URL.String())
 		CtxLogS(c).Errorw("test error 2", "url", c.Request.URL.String())
@@ -53,7 +57,9 @@ func TestCreateCoreEngineErrorReporting(t *testing.T) {
 }
 
 func TestCreateCoreEnginePanicRecovery(t *testing.T) {
-	r := CreateCoreEngine()
+	logger, _ := zap.NewDevelopment()
+	r := CreateCoreEngine(logger)
+	defer logger.Sync()
 	r.GET("/ping", func(c *gin.Context) {
 		CtxLogS(c).Errorw("test error 1", "url", c.Request.URL.String())
 		CtxLogS(c).Errorw("test error 2", "url", c.Request.URL.String())

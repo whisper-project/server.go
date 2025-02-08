@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/whisper-project/server.golang/common/platform"
+	"github.com/whisper-project/server.golang/platform"
 
 	"github.com/go-test/deep"
 	"github.com/google/uuid"

@@ -8,7 +8,7 @@ package saywhat
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/whisper-project/server.golang/common/middleware"
+	"github.com/whisper-project/server.golang/middleware"
 )
 
 func AddRoutes(r *gin.RouterGroup) {

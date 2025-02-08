@@ -9,7 +9,7 @@ package internaltest
 import (
 	"context"
 
-	storage2 "github.com/whisper-project/server.golang/common/platform"
+	"github.com/whisper-project/server.golang/platform"
 
 	"github.com/google/uuid"
 )
@@ -31,7 +31,7 @@ func NewTestId() string {
 
 func RemoveCreatedTestData() {
 	ctx := context.Background()
-	db, prefix := storage2.GetDb()
+	db, prefix := platform.GetDb()
 	iter := db.Scan(ctx, 0, prefix+"*:test-*", 20).Iterator()
 	for iter.Next(ctx) {
 		key := iter.Val()
@@ -39,8 +39,8 @@ func RemoveCreatedTestData() {
 	}
 }
 
-func LoadAndCopy(o storage2.StructPointer) (storage2.StructPointer, error) {
-	if err := storage2.LoadFields(context.Background(), o); err != nil {
+func LoadAndCopy(o platform.StructPointer) (platform.StructPointer, error) {
+	if err := platform.LoadFields(context.Background(), o); err != nil {
 		return o, err
 	}
 	c := o.Copy()
@@ -50,12 +50,12 @@ func LoadAndCopy(o storage2.StructPointer) (storage2.StructPointer, error) {
 	return c, nil
 }
 
-func LoadCopyAndSave(o storage2.StructPointer) (storage2.StructPointer, error) {
+func LoadCopyAndSave(o platform.StructPointer) (platform.StructPointer, error) {
 	c, err := LoadAndCopy(o)
 	if err != nil {
 		return o, err
 	}
-	if err := storage2.SaveFields(context.Background(), c); err != nil {
+	if err := platform.SaveFields(context.Background(), c); err != nil {
 		return o, err
 	}
 	return c, nil

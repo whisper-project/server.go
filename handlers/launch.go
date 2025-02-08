@@ -12,11 +12,9 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/whisper-project/server.golang/common/storage"
-
-	"github.com/whisper-project/server.golang/common/middleware"
-
-	"github.com/whisper-project/server.golang/common/platform"
+	"github.com/whisper-project/server.golang/middleware"
+	platform2 "github.com/whisper-project/server.golang/platform"
+	"github.com/whisper-project/server.golang/storage"
 
 	"gopkg.in/gomail.v2"
 
@@ -25,30 +23,34 @@ import (
 )
 
 func PostLaunchHandler(c *gin.Context) {
+	clientType := c.GetHeader("X-Client-Type")
 	clientId := c.GetHeader("X-Client-Id")
 	profileId := c.GetHeader("X-Profile-Id")
 	var emailHash string
 	var err error
 	if err = c.ShouldBindJSON(&emailHash); err != nil || emailHash == "" {
-		middleware.CtxLog(c).Info("Invalid email hash", zap.Error(err))
+		middleware.CtxLog(c).Info("Invalid email hash",
+			zap.String("hash", emailHash), zap.Error(err))
 		c.JSON(400, gin.H{"error": "Invalid request"})
 		return
 	}
 	if profileId == "" {
 		// The client doesn't know their profile; they are requesting it.
 		// So look for an existing profile that matches the email hash that was sent.
-		profileId, err = EmailProfile(c, emailHash)
+		profileId, _ = storage.EmailProfile(emailHash)
 		if profileId != "" {
 			// there's an existing profile, so the user needs to authenticate.
-			middleware.CtxLog(c).Info("Profile exists, need authentication", zap.String("profileId", profileId))
+			middleware.CtxLog(c).Info("Profile exists, need authentication",
+				zap.String("profileId", profileId))
 			c.Writer.Header().Set("WWW-Authenticate", fmt.Sprintf(`Bearer realm="%s"`, profileId))
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Provide authorization token"})
 			return
 		}
 		// there's no existing profile, so create one and return it
-		p, err := NewLaunchProfile(c, emailHash, clientId)
+		p, err := storage.NewLaunchProfile(clientType, emailHash, clientId)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
 		}
 		middleware.CtxLog(c).Info("Created new profile",
 			zap.String("email", p.EmailHash), zap.String("profileId", p.Id), zap.String("clientId", clientId))
@@ -57,7 +59,7 @@ func PostLaunchHandler(c *gin.Context) {
 		return
 	}
 	// make sure the client-supplied profile ID is real before responding
-	emailProfileId, err := EmailProfile(c, emailHash)
+	emailProfileId, err := storage.EmailProfile(emailHash)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -74,7 +76,7 @@ func PostLaunchHandler(c *gin.Context) {
 		return
 	}
 	// they are authenticated, so remember them against this client
-	ObserveClientLaunch(c, clientId, profileId)
+	storage.ObserveClientLaunch(clientType, clientId, profileId)
 	middleware.CtxLog(c).Info("Authenticated profile",
 		zap.String("profileId", p.Id), zap.String("clientId", clientId),
 		zap.String("name", p.Name), zap.String("email", p.EmailHash))
@@ -90,10 +92,10 @@ func PostRequestEmailHandler(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "Invalid request"})
 		return
 	}
-	hash := platform.MakeSha1(email)
+	hash := platform2.MakeSha1(email)
 	// look for a profile that matches the email
 	ctx := c.Request.Context()
-	profileId, err := platform.MapGet(ctx, storage.EmailProfileMap, hash)
+	profileId, err := platform2.MapGet(ctx, storage.EmailProfileMap, hash)
 	if err != nil {
 		middleware.CtxLog(c).Error("Map failure", zap.String("email", hash), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -107,7 +109,7 @@ func PostRequestEmailHandler(c *gin.Context) {
 	}
 	// otherwise, load the profile, and send email with password
 	p := &storage.Profile{Id: profileId}
-	if err := platform.LoadFields(ctx, p); err != nil {
+	if err := platform2.LoadFields(ctx, p); err != nil {
 		middleware.CtxLog(c).Error("Load Fields failure", zap.String("profileId", profileId), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
@@ -123,7 +125,7 @@ func GetShutdownHandler(c *gin.Context) {
 		return
 	}
 	clientId := c.GetHeader("X-Client-Id")
-	ObserveClientShutdown(c, clientId)
+	storage.ObserveClientShutdown(clientId)
 	c.Status(http.StatusNoContent)
 }
 

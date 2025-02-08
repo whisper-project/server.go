@@ -9,7 +9,7 @@ package saywhat
 import (
 	"testing"
 
-	"github.com/whisper-project/server.golang/common/middleware"
+	"github.com/whisper-project/server.golang/middleware"
 
 	"github.com/whisper-project/server.golang/legacy/internaltest"
 )

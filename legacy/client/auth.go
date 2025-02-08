@@ -11,9 +11,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/whisper-project/server.golang/common/middleware"
-
-	"github.com/whisper-project/server.golang/common/platform"
+	"github.com/whisper-project/server.golang/middleware"
+	"github.com/whisper-project/server.golang/platform"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
