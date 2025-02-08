@@ -8,51 +8,52 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/spf13/cobra"
 
-	"clickonetwo.io/whisper/api/saywhat"
-	"clickonetwo.io/whisper/internal/middleware"
-	"clickonetwo.io/whisper/internal/storage"
+	"github.com/whisper-project/server.golang/api/console"
+	"github.com/whisper-project/server.golang/api/saywhat"
+	"github.com/whisper-project/server.golang/lifecycle"
+	"github.com/whisper-project/server.golang/platform"
 )
 
 // serveCmd represents the serve command
 var serveCmd = &cobra.Command{
 	Use:   "serve",
-	Short: "Run the whisperapp server",
-	Long: `Runs the whisperapp server process.
-The whisperapp will never terminate unless it is interrupted/terminated.`,
+	Short: "Run the whisper server",
+	Long:  `Runs the whisper server until it's killed by signal.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		serve()
+		log.SetFlags(0)
+		env, _ := cmd.Flags().GetString("env")
+		address, _ := cmd.Flags().GetString("address")
+		port, _ := cmd.Flags().GetString("port")
+		err := platform.PushConfig(env)
+		if err != nil {
+			panic(fmt.Sprintf("Can't load configuration: %v", err))
+		}
+		defer platform.PopConfig()
+		serve(address, port)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(serveCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// serveCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// serveCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	serveCmd.Args = cobra.NoArgs
+	serveCmd.Flags().StringP("env", "e", "development", "The environment to run in")
+	serveCmd.Flags().StringP("address", "a", "127.0.0.1", "The IP address to listen on")
+	serveCmd.Flags().StringP("port", "p", "8080", "The port to listen on")
 }
 
-func serve() {
-	err := storage.PushConfig(".env")
+func serve(address, port string) {
+	r, err := lifecycle.CreateEngine()
 	if err != nil {
-		panic(fmt.Sprintf("Can't load configuration: %v", err))
+		panic(err)
 	}
-	defer storage.PopConfig()
-	r := middleware.CreateCoreEngine()
 	r.Static("/say-what", "./saywhat.js/dist")
 	sayWhat := r.Group("/api/say-what/v1")
 	saywhat.AddRoutes(sayWhat)
-	err = r.Run("localhost:5000")
-	if err != nil {
-		fmt.Printf("Server exited with error: %v", err)
-	}
+	consoleClient := r.Group("/api/console/v0")
+	console.AddRoutes(consoleClient)
+	lifecycle.Startup(r, fmt.Sprintf("%s:%s", address, port))
 }

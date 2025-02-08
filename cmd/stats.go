@@ -14,12 +14,13 @@ import (
 	"slices"
 	"time"
 
+	"github.com/whisper-project/server.golang/platform"
+
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/spf13/cobra"
 
-	"clickonetwo.io/whisper/internal/client"
-	"clickonetwo.io/whisper/internal/profile"
-	"clickonetwo.io/whisper/internal/storage"
+	"github.com/whisper-project/server.golang/legacy/client"
+	"github.com/whisper-project/server.golang/legacy/profile"
 )
 
 // statsCmd represents the stats command
@@ -50,10 +51,10 @@ func init() {
 var millis30days int64 = 30 * 24 * 60 * 60 * 1000
 
 func stats(from string) {
-	if err := storage.PushConfig(from); err != nil {
+	if err := platform.PushConfig(from); err != nil {
 		panic(err)
 	}
-	defer storage.PopConfig()
+	defer platform.PopConfig()
 
 	cs := analyzeClients()
 	ps := analyzeProfiles(cs)
@@ -95,7 +96,7 @@ func analyzeClients() clientStatistics {
 
 	// collect the client data
 	_, _ = fmt.Fprintf(os.Stderr, "Starting to process clients...")
-	if err := storage.MapFields(context.Background(), classify, &c); err != nil {
+	if err := platform.MapFields(context.Background(), classify, &c); err != nil {
 		panic(err)
 	}
 	_, _ = fmt.Fprintf(os.Stderr, "\nProcessed %d clients.\n", processed)
@@ -164,7 +165,7 @@ func analyzeProfiles(cs clientStatistics) profileStatistics {
 
 	// collect the profile data
 	_, _ = fmt.Fprintf(os.Stderr, "Starting to process profiles...")
-	if err := storage.MapFields(context.Background(), classify, &p); err != nil {
+	if err := platform.MapFields(context.Background(), classify, &p); err != nil {
 		panic(err)
 	}
 	_, _ = fmt.Fprintf(os.Stderr, "\nProcessed %d profiles.\n", processed)

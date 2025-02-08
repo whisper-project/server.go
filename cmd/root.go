@@ -15,10 +15,10 @@ import (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "whisperapp",
-	Short: "Whisperapp is the next generation Whisper server",
-	Long: `Whisperapp, the next generation Whisper server,
-provides back-end services used by the iOS/macOS Whisper app.`,
+	Use:   "whisper.golang",
+	Short: "Whisper.golang is the next generation Whisper server",
+	Long: `Whisper.golang, the next generation Whisper server,
+provides back-end services used by the next release of Whisper clients.`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

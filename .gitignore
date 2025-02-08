@@ -1,6 +1,9 @@
 # local directory, by convention
 local/
 
+# built module main
+/server.golang*
+
 # dotenv
 .env*
 !.env.project

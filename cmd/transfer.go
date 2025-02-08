@@ -12,12 +12,13 @@ import (
 	"os"
 	"strings"
 
+	"github.com/whisper-project/server.golang/platform"
+
 	"github.com/spf13/cobra"
 
-	"clickonetwo.io/whisper/internal/client"
-	"clickonetwo.io/whisper/internal/conversation"
-	"clickonetwo.io/whisper/internal/profile"
-	"clickonetwo.io/whisper/internal/storage"
+	"github.com/whisper-project/server.golang/legacy/client"
+	"github.com/whisper-project/server.golang/legacy/conversation"
+	"github.com/whisper-project/server.golang/legacy/profile"
 )
 
 // transferCmd represents the transfer command
@@ -65,16 +66,16 @@ When transferring specific objects, you can also dump their JSON to an output fi
 			panic(err)
 		}
 
-		var om storage.ObjectMap
+		var om platform.ObjectMap
 		if from != "" {
-			if err := storage.PushConfig(from); err != nil {
+			if err := platform.PushConfig(from); err != nil {
 				panic(err)
 			}
-			defer storage.PopConfig()
+			defer platform.PopConfig()
 			if all {
 				om = collectAll()
 			} else {
-				om = make(storage.ObjectMap)
+				om = make(platform.ObjectMap)
 				if ids := strings.Split(profiles, ","); profiles != "" {
 					var p profile.UserProfile
 					om["profiles"] = collectObjectsById("profiles", ids, &p)
@@ -96,10 +97,10 @@ When transferring specific objects, you can also dump their JSON to an output fi
 			om = loadObjectsFromPath(load)
 		}
 		if to != "" {
-			if err := storage.PushConfig(to); err != nil {
+			if err := platform.PushConfig(to); err != nil {
 				panic(err)
 			}
-			defer storage.PopConfig()
+			defer platform.PopConfig()
 			saveObjects(om)
 		} else {
 			dumpObjectsToPath(om, dump)
@@ -130,8 +131,8 @@ func init() {
 	transferCmd.MarkFlagsMutuallyExclusive("load", "all", "states")
 }
 
-func collectAll() storage.ObjectMap {
-	om := make(storage.ObjectMap)
+func collectAll() platform.ObjectMap {
+	om := make(platform.ObjectMap)
 	om["profiles"] = collectObjectsByType("profiles", &profile.UserProfile{})
 	om["clients"] = collectObjectsByType("clients", &client.Data{})
 	om["conversations"] = collectObjectsByType("conversations", &conversation.Data{})
@@ -139,7 +140,7 @@ func collectAll() storage.ObjectMap {
 	return om
 }
 
-func collectObjectsByType[T storage.StructPointer](name string, o T) []any {
+func collectObjectsByType[T platform.StructPointer](name string, o T) []any {
 	collected := 0
 	var as []any
 	collect := func() {
@@ -149,14 +150,14 @@ func collectObjectsByType[T storage.StructPointer](name string, o T) []any {
 		}
 	}
 	_, _ = fmt.Fprintf(os.Stderr, "Starting to collect all %s...", name)
-	if err := storage.MapFields(context.Background(), collect, o); err != nil {
+	if err := platform.MapFields(context.Background(), collect, o); err != nil {
 		panic(err)
 	}
 	_, _ = fmt.Fprintf(os.Stderr, "\nCollected %d %s.\n", len(as), name)
 	return as
 }
 
-func collectObjectsById[T storage.StructPointer](name string, ids []string, o T) []any {
+func collectObjectsById[T platform.StructPointer](name string, ids []string, o T) []any {
 	singular := name[0 : len(name)-1]
 	if len(ids) >= 10 {
 		_, _ = fmt.Fprintf(os.Stderr, "Starting to collect %s...", name)
@@ -164,7 +165,7 @@ func collectObjectsById[T storage.StructPointer](name string, ids []string, o T)
 	as := make([]any, 0, len(ids))
 	for _, id := range ids {
 		_ = o.SetStorageId(id)
-		if err := storage.LoadFields(context.Background(), o); err != nil {
+		if err := platform.LoadFields(context.Background(), o); err != nil {
 			panic(err)
 		}
 		as = append(as, o.Copy())
