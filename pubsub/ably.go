@@ -24,11 +24,18 @@ func sLog() *zap.Logger {
 	return storage.ServerLogger
 }
 
+type ClientStatus struct {
+	ClientId string
+	IsOnline bool
+}
+
+type StatusReceiver chan ClientStatus
+
 type AblyManager struct {
 	sessions map[string]*session
 }
 
-func (m *AblyManager) StartSession(sessionId string, cr protocol.ContentReceiver, sr protocol.StatusReceiver) error {
+func (m *AblyManager) StartSession(sessionId string, cr protocol.ContentReceiver, sr StatusReceiver) error {
 	if _, ok := m.sessions[sessionId]; ok {
 		return fmt.Errorf("session %s already started", sessionId)
 	}
@@ -107,7 +114,7 @@ func NewAblyManager() *AblyManager {
 type session struct {
 	id              string
 	cr              protocol.ContentReceiver
-	sr              protocol.StatusReceiver
+	sr              StatusReceiver
 	client          *ably.Realtime
 	controlId       string
 	presenceId      string
@@ -119,9 +126,10 @@ type session struct {
 }
 
 type participant struct {
-	clientId string
-	canSend  bool
-	attached bool
+	clientId   string
+	canWhisper bool
+	canListen  bool
+	attached   bool
 }
 
 func (s *session) start() error {
@@ -190,20 +198,33 @@ func (s *session) end() {
 
 func (s *session) addWhisperer(clientId string) (bool, error) {
 	if p, ok := s.participants[clientId]; ok {
+		p.canWhisper = true
+		p.canListen = true
 		return p.attached, nil
 	}
 	attached := s.updatePresence(clientId)
-	l := &participant{clientId: clientId, canSend: true, attached: attached}
+	l := &participant{clientId: clientId, canWhisper: true, canListen: true, attached: attached}
 	s.participants[clientId] = l
 	return attached, nil
 }
 
 func (s *session) addListener(clientId string) (bool, error) {
 	if p, ok := s.participants[clientId]; ok {
+		p.canListen = true
 		return p.attached, nil
 	}
 	attached := s.updatePresence(clientId)
-	l := &participant{clientId: clientId, canSend: false, attached: attached}
+	l := &participant{clientId: clientId, canWhisper: false, canListen: true, attached: attached}
+	s.participants[clientId] = l
+	return attached, nil
+}
+
+func (s *session) addWaitLister(clientId string) (bool, error) {
+	if p, ok := s.participants[clientId]; ok {
+		return p.attached, nil
+	}
+	attached := s.updatePresence(clientId)
+	l := &participant{clientId: clientId, canWhisper: false, canListen: false, attached: attached}
 	s.participants[clientId] = l
 	return attached, nil
 }
@@ -211,15 +232,17 @@ func (s *session) addListener(clientId string) (bool, error) {
 func (s *session) clientToken(clientId string) ([]byte, error) {
 	p, ok := s.participants[clientId]
 	if !ok {
-		return nil, fmt.Errorf("unknown client: %s", clientId)
+		return nil, nil
 	}
 	capabilities := map[string][]string{
 		s.presenceId: {"presence"},
 		s.controlId:  {"subscribe"},
-		s.contentId:  {"subscribe"},
 	}
-	if p.canSend {
+	if p.canWhisper {
 		capabilities[s.contentId] = []string{"publish", "subscribe"}
+	}
+	if p.canListen {
+		capabilities[s.contentId] = []string{"subscribe"}
 	}
 	payload, err := json.Marshal(capabilities)
 	if err != nil {
@@ -329,7 +352,7 @@ func (s *session) presenceReceiver() func(*ably.PresenceMessage) {
 		}
 		if attached != p.attached {
 			p.attached = attached
-			s.sr <- protocol.ClientStatus{ClientId: p.clientId, IsOnline: attached}
+			s.sr <- ClientStatus{ClientId: p.clientId, IsOnline: attached}
 		}
 	}
 }

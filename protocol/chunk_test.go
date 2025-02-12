@@ -113,12 +113,12 @@ func TestContentChunk_DebugString(t *testing.T) {
 		},
 		{
 			name:     "Known negative offset",
-			chunk:    ContentChunk{Offset: coNewline, Text: ""},
+			chunk:    ContentChunk{Offset: CoNewline, Text: ""},
 			expected: "newline",
 		},
 		{
 			name:     "Known negative offset with value",
-			chunk:    ContentChunk{Offset: coPlaySound, Text: "some-sound"},
+			chunk:    ContentChunk{Offset: CoPlaySound, Text: "some-sound"},
 			expected: "play sound: some-sound",
 		},
 		{
@@ -157,12 +157,12 @@ func TestParseContentChunk(t *testing.T) {
 		{
 			name:     "Non-numeric offset",
 			input:    "abc|Invalid",
-			expected: ContentChunk{Offset: coIgnore, Text: "abc|Invalid"},
+			expected: ContentChunk{Offset: CoIgnore, Text: "abc|Invalid"},
 		},
 		{
 			name:     "Malformed input",
 			input:    "MalformedText",
-			expected: ContentChunk{Offset: coIgnore, Text: "MalformedText"},
+			expected: ContentChunk{Offset: CoIgnore, Text: "MalformedText"},
 		},
 	}
 
