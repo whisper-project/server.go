@@ -19,7 +19,7 @@ func TestProcessLiveChunk(t *testing.T) {
 		{
 			"coNewline offset",
 			"hello",
-			ContentChunk{Offset: coNewline, Text: ""},
+			ContentChunk{Offset: CoNewline, Text: ""},
 			"",
 			[]string{"hello"},
 		},
@@ -102,7 +102,7 @@ func TestDiffLines(t *testing.T) {
 			"hello\nworld",
 			[]ContentChunk{
 				{Offset: 5, Text: ""},
-				{Offset: coNewline, Text: ""},
+				{Offset: CoNewline, Text: ""},
 				{Offset: 0, Text: "world"},
 			},
 		},
@@ -142,7 +142,7 @@ func TestSuffixToChunks(t *testing.T) {
 			5,
 			[]ContentChunk{
 				{Offset: 5, Text: ""},
-				{Offset: coNewline, Text: ""},
+				{Offset: CoNewline, Text: ""},
 				{Offset: 0, Text: "world"},
 			},
 		},
@@ -152,9 +152,9 @@ func TestSuffixToChunks(t *testing.T) {
 			5,
 			[]ContentChunk{
 				{Offset: 5, Text: ""},
-				{Offset: coNewline, Text: ""},
+				{Offset: CoNewline, Text: ""},
 				{Offset: 0, Text: "world"},
-				{Offset: coNewline, Text: ""},
+				{Offset: CoNewline, Text: ""},
 				{Offset: 0, Text: "!"},
 			},
 		},

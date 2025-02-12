@@ -18,10 +18,10 @@ import "strings"
 // If the offset of the chunk is longer than the current live text, the missing
 // space is filled with '?' characters.
 func ProcessLiveChunk(oldLive string, chunk ContentChunk) (newLive string, newPast []string) {
-	if chunk.Offset < coNewline {
+	if chunk.Offset < CoNewline {
 		return oldLive, nil
 	}
-	if chunk.Offset == coNewline {
+	if chunk.Offset == CoNewline {
 		return "", []string{oldLive}
 	}
 	if chunk.Offset > len(oldLive) {
@@ -62,7 +62,7 @@ func suffixToChunks(s string, start int) []ContentChunk {
 	result := make([]ContentChunk, 1, len(lines)*2-1)
 	result[0] = ContentChunk{Offset: start, Text: lines[0]}
 	for i := 1; i < len(lines); i++ {
-		result = append(result, ContentChunk{Offset: coNewline, Text: ""})
+		result = append(result, ContentChunk{Offset: CoNewline, Text: ""})
 		result = append(result, ContentChunk{Offset: 0, Text: lines[i]})
 	}
 	return result

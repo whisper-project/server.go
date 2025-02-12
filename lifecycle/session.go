@@ -8,6 +8,7 @@ package lifecycle
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strconv"
@@ -36,17 +37,34 @@ var (
 // Whisperer and multiple Listeners.
 type Session struct {
 	Id           string // the conversation ID this is a session for
-	pubsub       pubsub.Manager
+	Pubsub       pubsub.Manager
 	speech       speech.Manager
 	state        *storage.SessionState
 	cr           protocol.ContentReceiver
-	sr           protocol.StatusReceiver
+	sr           pubsub.StatusReceiver
 	cancel       context.CancelFunc
 	livePackets  []protocol.ContentPacket
 	liveText     string
 	overlap      []protocol.ContentChunk
 	shuttingDown bool
 	transcriptId string
+}
+
+// AuthenticateParticipant gets an appropriate pubsub token for a client.
+// If it returns a nil token then the client cannot authenticate against the session.
+func AuthenticateParticipant(conversationId, clientId string) (json.RawMessage, error) {
+	s, ok := sessions[conversationId]
+	if !ok {
+		return nil, nil
+	}
+	tok, err := s.Pubsub.ClientToken(conversationId, clientId)
+	if err != nil {
+		sLog().Error("ably client token failure",
+			zap.String("sessionId", conversationId), zap.String("clientId", clientId),
+			zap.Error(err))
+		return nil, err
+	}
+	return tok, nil
 }
 
 // GetSession finds or creates a Session for the given conversation.
@@ -65,11 +83,11 @@ func GetSession(conversationId string) (*Session, error) {
 	}
 	s := &Session{
 		Id:     conversationId,
-		pubsub: ably,
+		Pubsub: ably,
 		speech: mock,
 		state:  state,
 		cr:     make(protocol.ContentReceiver, 1024), // never stall
-		sr:     make(protocol.StatusReceiver, 1024),  // never stall
+		sr:     make(pubsub.StatusReceiver, 1024),    // never stall
 	}
 	if err = s.start(); err != nil {
 		sLog().Error("session start failure",
@@ -154,7 +172,7 @@ func (s *Session) Shutdown(notify chan string) {
 	go func() {
 		time.Sleep(10 * time.Second)
 		s.cancel()
-		if err := s.pubsub.EndSession(s.Id); err != nil {
+		if err := s.Pubsub.EndSession(s.Id); err != nil {
 			sLog().Error("ably session end failure", zap.String("sessionId", s.Id), zap.Error(err))
 		}
 		if err := storage.SuspendSessionState(s.state); err != nil {
@@ -171,12 +189,12 @@ func (s *Session) Shutdown(notify chan string) {
 func (s *Session) End() string {
 	delete(sessions, s.Id)
 	s.state.EndedAt = time.Now().UnixMilli()
-	if err := s.pubsub.Broadcast(s.Id, protocol.EndPacket()); err != nil {
+	if err := s.Pubsub.Broadcast(s.Id, protocol.EndPacket()); err != nil {
 		sLog().Error("ably broadcast failure on end of session",
 			zap.String("sessionId", s.Id), zap.Error(err))
 	}
 	s.cancel()
-	if err := s.pubsub.EndSession(s.Id); err != nil {
+	if err := s.Pubsub.EndSession(s.Id); err != nil {
 		sLog().Error("ably session end failure",
 			zap.String("sessionId", s.Id), zap.Error(err))
 	}
@@ -246,7 +264,7 @@ func (s *Session) RemoveClient(clientId string) error {
 		}
 		return NotPresentError
 	}
-	if err := s.pubsub.RemoveClient(s.Id, clientId); err != nil {
+	if err := s.Pubsub.RemoveClient(s.Id, clientId); err != nil {
 		sLog().Error("ably remove client failure",
 			zap.String("sessionId", s.Id), zap.String("clientId", clientId),
 			zap.Error(err))
@@ -264,7 +282,7 @@ func (s *Session) Transcribe() string {
 }
 
 func (s *Session) start() error {
-	if err := s.pubsub.StartSession(s.Id, s.cr, s.sr); err != nil {
+	if err := s.Pubsub.StartSession(s.Id, s.cr, s.sr); err != nil {
 		sLog().Error("ably start session failure",
 			zap.String("sessionId", s.Id), zap.Error(err))
 		return err
@@ -276,7 +294,7 @@ func (s *Session) start() error {
 	for _, p := range s.state.Participants {
 		var err error
 		if p.IsWhisperer {
-			p.IsOnline, err = s.pubsub.AddWhisperer(s.Id, p.ClientId)
+			p.IsOnline, err = s.Pubsub.AddWhisperer(s.Id, p.ClientId)
 			if err != nil {
 				sLog().Error("ably add whisperer failure",
 					zap.String("sessionId", s.Id), zap.String("clientId", p.ClientId),
@@ -285,7 +303,7 @@ func (s *Session) start() error {
 				return err
 			}
 		} else {
-			p.IsOnline, err = s.pubsub.AddListener(s.Id, p.ClientId)
+			p.IsOnline, err = s.Pubsub.AddListener(s.Id, p.ClientId)
 			if err != nil {
 				sLog().Error("ably add listener failure",
 					zap.String("sessionId", s.Id), zap.String("clientId", p.ClientId),
@@ -309,10 +327,10 @@ func (s *Session) newParticipant(clientId, profileId, name string, isWhisperer b
 	var msg string
 	if isWhisperer {
 		msg = "ably add whisperer failure"
-		p.IsOnline, err = s.pubsub.AddWhisperer(s.Id, p.ClientId)
+		p.IsOnline, err = s.Pubsub.AddWhisperer(s.Id, p.ClientId)
 	} else {
 		msg = "ably add listener failure"
-		p.IsOnline, err = s.pubsub.AddListener(s.Id, p.ClientId)
+		p.IsOnline, err = s.Pubsub.AddListener(s.Id, p.ClientId)
 	}
 	if err != nil {
 		sLog().Error(msg,
@@ -328,7 +346,7 @@ func (s *Session) notifyNeedsAuth() {
 		for _, p := range s.state.Participants {
 			if p.IsWhisperer && p.IsOnline {
 				packet := protocol.RequestsPendingPacket()
-				if err := s.pubsub.Send(s.Id, "whisperer", packet); err != nil {
+				if err := s.Pubsub.Send(s.Id, "whisperer", packet); err != nil {
 					sLog().Error("ably send failure to Whisperer",
 						zap.String("sessionId", s.Id), zap.String("clientId", "whisperer"),
 						zap.String("packet", packet), zap.Error(err))
@@ -356,7 +374,7 @@ func (s *Session) monitorParticipants(ctx context.Context) {
 				s.notifyNeedsAuth()
 			}
 			packet := protocol.ParticipantsChangedPacket()
-			if err := s.pubsub.Broadcast(s.Id, packet); err != nil {
+			if err := s.Pubsub.Broadcast(s.Id, packet); err != nil {
 				sLog().Error("ably broadcast failure",
 					zap.String("sessionId", s.Id),
 					zap.String("packet", packet), zap.Error(err))
@@ -437,7 +455,7 @@ func (s *Session) transcribeOnePacket(packet protocol.ContentPacket) {
 					zap.String("clientId", packet.ClientId), zap.String("text", p), zap.Error(err))
 			} else {
 				packet := protocol.PastTextSpeechIdPacket(packet.PacketId, strconv.Itoa(i), id)
-				if err := s.pubsub.Broadcast(s.Id, packet); err != nil {
+				if err := s.Pubsub.Broadcast(s.Id, packet); err != nil {
 					sLog().Error("ably broadcast failure or past text speech id",
 						zap.String("sessionId", s.Id),
 						zap.String("packet", packet), zap.Error(err))

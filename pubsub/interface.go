@@ -9,7 +9,7 @@ package pubsub
 import "github.com/whisper-project/server.golang/protocol"
 
 type Manager = interface {
-	StartSession(sessionId string, cr protocol.ContentReceiver, sr protocol.StatusReceiver) error
+	StartSession(sessionId string, cr protocol.ContentReceiver, sr StatusReceiver) error
 	EndSession(sessionId string) error
 	AddWhisperer(sessionId, clientId string) (bool, error)
 	AddListener(sessionId, clientId string) (bool, error)

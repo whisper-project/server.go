@@ -35,15 +35,15 @@ type ContentChunk struct {
 }
 
 const (
-	coNewline   = -1    // Shift current live Text to past Text (ignore chunk Text)
-	coPlaySound = -2    // Play local sound resource named by the chunk Text
-	coIgnore    = -1000 // Ignore this packet (used for recovery from transmission errors)
+	CoNewline   = -1    // Shift current live Text to past Text (ignore chunk Text)
+	CoPlaySound = -2    // Play local sound resource named by the chunk Text
+	CoIgnore    = -1000 // Ignore this packet (used for recovery from transmission errors)
 )
 
 var ccNames = map[int]string{
-	coNewline:   "newline",
-	coPlaySound: "play sound",
-	coIgnore:    "ignore",
+	CoNewline:   "newline",
+	CoPlaySound: "play sound",
+	CoIgnore:    "ignore",
 }
 
 func (c ContentChunk) String() string {
@@ -67,11 +67,11 @@ func (c ContentChunk) DebugString() string {
 func ParseContentChunk(s string) ContentChunk {
 	left, right, found := strings.Cut(s, "|")
 	if !found {
-		return ContentChunk{Offset: coIgnore, Text: s}
+		return ContentChunk{Offset: CoIgnore, Text: s}
 	}
 	offset, err := strconv.Atoi(left)
 	if err != nil {
-		return ContentChunk{Offset: coIgnore, Text: s}
+		return ContentChunk{Offset: CoIgnore, Text: s}
 	}
 	return ContentChunk{Offset: offset, Text: right}
 }
@@ -99,10 +99,3 @@ func ParseContentPacket(s string) ContentPacket {
 	}
 	return ContentPacket{PacketId: packetId, ClientId: clientId, Data: data}
 }
-
-type ClientStatus struct {
-	ClientId string
-	IsOnline bool
-}
-
-type StatusReceiver chan ClientStatus

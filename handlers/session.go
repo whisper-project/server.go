@@ -56,17 +56,39 @@ func StartListenSessionHandler(c *gin.Context) {
 	s, err := lifecycle.GetSession(conversationId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 	if isAllowed {
 		if err = s.AddListener(clientId, p.Id, p.Name); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		c.JSON(http.StatusOK, gin.H{"status": "ok", "allowed": true})
 		return
 	}
 	if err = s.AddListenerRequest(clientId, p.Id, p.Name); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
-	// TODO: have client wait for what??
+	c.JSON(http.StatusOK, gin.H{"status": "ok", "allowed": false})
+	return
+}
+
+func GetClientSessionTokenHandler(c *gin.Context) {
+	p := AuthenticateRequest(c)
+	if p == nil {
+		return
+	}
+	clientId := c.GetHeader("X-Client-Id")
+	conversationId := c.Param("conversationId")
+	s, err := lifecycle.AuthenticateParticipant(conversationId, clientId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if s == nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Not a participant in this conversation"})
+		return
+	}
+	c.JSON(http.StatusOK, s)
 }
